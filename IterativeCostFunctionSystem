@@ -1,0 +1,65 @@
+Optimum System:
+-Incentivizes providing as much power as possible
+-Incentivizes providing consistent power to highest tier
+-Incentivizes rotation through lower-tier buildings
+-Incentivizes charging supply if conditions are expected to worsen
+-Disincentivizes pulling power from Austin grid
+-Disincentivizes charging supply if conditions are expected to improve
+-Disincentivizes risk for accidental blackouts
+We design a cost function that factors in these incentives and disincentives and plot it against each parameter—power provided, power consistency, power rotation, supply charge, Austin demand, supply discharge, accidental blackout risk.
+The program, informed by previous and current supply, demand, and weather data, uses iterative guessing to traverse each plot to find a local minimum and computes the total cost. It continues doing this over the “system inactive” period until it finds an optimum solution.
+Simulation Environment:
+Suppose we have a data set containing n hours. We’ll set the “clock” of the program to be in the middle—it has access to n/2 historical values but does not know the other n/2 events and values.
+It will compute an optimum solution. When it thinks it’s found an optimum solution, it will return its list of operations. We need to interpret or simulate this information and model how this solution would fare in the “future” side of the data set. If the program continuously outputs operations with unfavorable tradeoffs, like increasing power transmission at the risk of more blackouts, or transmitting more power at the expense of not charging storage elements enough, then we will need to change the weighting of those events.
+
+Manthan:
+It makes sense at a high level but what I'm saying is its gonna be hard af to implement something like that. How are you going to create a function that will incentivize and disincentivize all those things? That's kinda why I wanna see some pseudocode (or even an equation) cuz I can't even imagine how we are going to do that on top of the pseudocode I wrote (although if we do this, idek if the controls code I wrote could factor in here). Everything sounds kinda like an ML implementation (simulating/modeling the solution it outputs), but is supposed to be computational which makes me think we have to do all the complicated stuff an ML algorithm would have to do.@Neeley A Pate Idk if I remember correctly but if you are taking data science lab this is essentially what yall had to do for the Kaggle competition right(keep changing the weights of the input features and use different methods like Lasso or whatever to get something that correctly represented the data without overfitting)? Is this something that is feasible?
+
+Evan:
+we can def implement this with ML
+10:14
+but we still need a way to evaluate the "correctness" of an output
+10:15
+and train the ML module
+
+Evan:
+the ML workflow is basically:
+train ML Control Module on something (?)
+feed it past data, have it output some set of controls
+see how those controls would fare on future supply/demand/weather data (this requires some degree of 'simulation')
+feed "correctness" back into the module
+10:20
+it feels unmeasurable to me and thats why im hesitant. ML is way more of a black box and even though its easier to think about, any problems we have are going to be way harder when we cant just think about it mathematically
+10:20
+compared to a function of multiple variables/partial derivatives/etc
+
+Manthan:
+If it is going to be ML then we should probably change the good/bad: shouldn't provide as much power as possible cuz we want some to go to storage(only storing power when things might go bad probably isn't a great idea). Also idk how specific disincentivizing risk for accidental blackouts is, that's kinda just saying we don't wanna black out right?
+
+Evan:
+yeah we can change the weightings around as we see fit. the bigger point is the use of a cost function to measure the success/failure of a set of controls
+
+Manthan:
+Im confused, is this ML or is it fancy math?
+
+Evan:
+the cost function can be used with either, but the iterative guessing is fancy math
+
+Manthan:
+Ight I'm kinda brain ded rn and I have an exam on Wednesday to study for. All I'm saying is I think the hardest part is gonna be the cost function so we should come up with ideas for that before trying this out.
+But if we figure out the cost function then I get the feeling this is probably the niche thing we wanna talk about in our prior art.
+Or something we should research some prior art for
+
+Evan:
+ML workflow:
+train ML Control Module on something (?)
+feed it past data, have it output some set of controls
+see how those controls would fare on future supply/demand/weather data (this requires some degree of 'simulation')
+feed "correctness" back into the module. we cant train on bad data
+computational workflow:
+base incentives on "reasonable" guesses
+develop cost function as a function of our various parameters. the cost function is made up of parameters, parameter incentives, and future supply/demand/weather information
+have the computer guess some parameter values, plug them in, and see if the cost can be further minimized with some tradeoff i.e. more charging at the expense of less transmission
+have it output those controls
+see how those controls would fare on future supply/demand/weather data (this requires some degree of 'simulation')
+we then need to figure out how to tune the incentives to correct for bad outcomes (like if there are random blackouts, we may need to reduce incentives to transmit as much power as possible or further deincentivize system reliability reduction)
