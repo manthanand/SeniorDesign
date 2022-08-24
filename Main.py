@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
     while True: 
         freq = ser.read()
-        while  freq < UPPERBOUND or freq > LOWERBOUND: # This blocks until an out-of-bounds frequency is read
+        while  freq < UPPERBOUND and freq > LOWERBOUND: # This blocks until an out-of-bounds frequency is read
             freq = ser.read()
 
         t4 = threading.Thread(target = FSM.greedyPick()) # Start FSM thread 
