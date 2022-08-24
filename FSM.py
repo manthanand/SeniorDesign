@@ -32,5 +32,4 @@ PRIORITIES = [P1, P2, P3]
 
 def greedyPick(projectedSupply):
 
-
 # make class structure for each building--projected demand
