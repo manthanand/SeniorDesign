@@ -23,4 +23,4 @@ while(True):
     myFile.close()
     os.remove(text)
     print("Generated new weather csv")
-    time.sleep(900)
+    time.sleep(900) #NOTE: This is because we are getting data for free every 15 minutes.
