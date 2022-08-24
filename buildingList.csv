@@ -1,0 +1,5 @@
+name,priority,demand
+hospital,P1,45
+dorm1,P2,60
+dorm2,P2,30
+gym,P3,15
