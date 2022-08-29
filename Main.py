@@ -15,6 +15,7 @@ ser = serial.Serial(
 )
 
 if __name__ == "__main__":
+    FSM.init()
     t1 = threading.Thread(target = ML.collect_data_weather,) #Constantly collect weather data
     t2 = threading.Thread(target = ML.collect_data_supplydemand,)
     t3 = threading.Thread(target = ML.train())
