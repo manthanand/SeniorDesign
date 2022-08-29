@@ -9,6 +9,8 @@ import threading
 UPPERBOUND = 60.05
 LOWERBOUND = 59.95
 
+BLACKOUT = 0
+
 ser = serial.Serial(
     port=serial.tools.list_ports.comports()[len() - 1],
     baudrate=115200
@@ -16,23 +18,11 @@ ser = serial.Serial(
 
 if __name__ == "__main__":
     FSM.init()
-    t1 = threading.Thread(target = ML.collect_data_weather,) #Constantly collect weather data
-    t2 = threading.Thread(target = ML.collect_data_supplydemand,)
-    t3 = threading.Thread(target = ML.train())
-
-    t1.start()
-    t2.start()
-    t3.start()
 
     while True: 
-        freq = ser.read()
-        while  freq < UPPERBOUND and freq > LOWERBOUND: # This blocks until an out-of-bounds frequency is read
+        ML.train() # always train no matter what
+        if BLACKOUT: BLACKOUT = FSM.fsm() #returns whether blackout is continuing or not
+        else: #if not in blackout, check frequency for blackout indication
             freq = ser.read()
-
-        t4 = threading.Thread(target = FSM.greedyPick()) # Start FSM thread 
-        t4.start()
-        t4.join() # If FSM thread finishes, we are in safe state. Go back to checking if blackout will happen again
-    
-    t1.join() #This should never be reached
-    t2.join()
-    t3.join()
+            if freq < UPPERBOUND and freq > LOWERBOUND: freq = ser.read() # This blocks until an out-of-bounds frequency is read
+            else: BLACKOUT = 1
