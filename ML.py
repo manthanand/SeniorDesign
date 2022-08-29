@@ -31,18 +31,19 @@ def collect_data_weather():
         time.sleep(900) #NOTE: This is because we are getting data for free every 15 minutes.
 
 # This function collects the current supply and demand for all clusters and stores them in "CurrentData.csv"
-# Runs constantly
+# New data is generated every 14 minutes according to data provided to us.
 def collect_data_supplydemand():
+    #
     return
 
 # This function trains based on the collected data and writes predictions to "PredictedData.csv"
-# Runs every 15 minutes
+# Runs every time new data is received
 def train_supply():
     while True:
         time.sleep(900) 
 
 # This function trains based on the collected data and writes predictions to "PredictedData.csv"
-# Runs every 15 minutes
+# Runs every time new data is received
 def train_demand():
     while True:
         time.sleep(900)

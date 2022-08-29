@@ -20,14 +20,6 @@ class building:
     def reset(self):
         self.timeon = 0
 
-'''
-NOTE: Assumptions
-1. Highest priority clusters will always be powered. If not enough power, pull from Austin Grid.
-2. Lower priority clusters will switch at specific timestep determined by priority.
-3. If switch not possible due to low power, go to next available cluster that can be powered.
-4. After reaching end of cluster list, power clusters with lowest time on to ensure equity in power distribution.
-'''
-
 def init():
     with open('./SeniorDesign/buildingList.csv', newline='') as csvfile:
         building_reader = csv.reader(csvfile, delimiter=',')
@@ -44,6 +36,7 @@ def init():
                     print("Building Omitted: " + row_building.name)
 
 def fsm():
+    
 
 def greedy_pick():
     # read from current_data.csv
