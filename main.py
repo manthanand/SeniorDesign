@@ -89,6 +89,7 @@ from pandas import read_csv
 from keras import Sequential
 from keras.layers import Dense
 from keras.layers import LSTM
+import jinja2
 
 # recurrent neural network
 # natural langauge processing problems
@@ -112,18 +113,48 @@ def split_sequence(sequence, n_steps):
         y.append(seq_y)
     return asarray(X), asarray(y)
 
+def get_date(dates):
+    for date in dates:
+        print(date)
+        yield date
+
+def sum_rows(dates, values):
+    print("hi")
+    csv = []
+    summed_data = []
+    for value, date in zip(values, dates):
+        total = 0
+        for num in value:
+            total += num
+        summed_data.append(date)
+        summed_data.append(total)
+        csv.append(summed_data)
+        summed_data = []
+    dataframe = pd.DataFrame(csv, columns =['DateTime', 'Summed Power'])
+    dataframe.style.hide_index()
+    dataframe.to_csv("CSV Data/Running Data.csv")
 
 # load the dataset
+CSV = 'CSV Data/Annex East Active Power_Feb.csv'
 print("Recurrent Neural Network")
-path = 'CSV Data/Annex East Active Power_August.csv'
+path = CSV
 df = read_csv(path, header=0, index_col=0, squeeze=True)
 # retrieve the values
+dates = []
+import csv
+with open(CSV, 'r') as f:
+    csv_reader = csv.reader(f)
+    for row in csv_reader:
+        if row[0] != 'DateTime':
+            dates.append(row[0])
+print(dates)
 values = df.values.astype('float32')
+sum_rows(dates, values)
+df = read_csv("CSV Data/Running Data.csv", header=0, index_col=0, squeeze=True)
 # specify the window size
 n_steps = 5
 # split into samples
 X, y = split_sequence(values, n_steps)
-print(X)
 # reshape into [samples, timesteps, features]
 X = X.reshape((X.shape[0], X.shape[1], 1))
 # split into train/test
