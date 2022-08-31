@@ -10,7 +10,6 @@ import time
 # This function collects the current supply and demand for all clusters and stores them in "CurrentData.csv" every 15 minutes
 # Writes predictions to "PredictedData.csv"
 def train():
-    time1 = time.time()
     # WAIT UNTIL NEW DATA IS AVAILABLE IN SUPPLY PORTAL
     
     # THIS WILL COLLECT WEATHER DATA AND STORE IT IN "WeatherCSV.csv"
@@ -34,5 +33,3 @@ def train():
     # convert solar panel supply to power delivered to microgrid
 
     # TRAIN ON COLLECTED DATA FROM ABOVE FOR SUPPLY AND DEMAND
-    
-    while ((time.time() - time1) > (60 * 15)): pass
