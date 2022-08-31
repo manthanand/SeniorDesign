@@ -7,8 +7,7 @@ import pandas as pd
 import os
 import time
 
-# This function collects the current supply and demand for all clusters and stores them in "CurrentData.csv" every 15 minutes
-# Writes predictions to "PredictedData.csv"
+# This function collects the current supply and demand for all clusters and stores them in "Data.csv" every 15 minutes
 def train():
     # WAIT UNTIL NEW DATA IS AVAILABLE IN SUPPLY PORTAL
     
