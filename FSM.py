@@ -25,8 +25,6 @@ class cluster:
 def init(clusters):
     for i in clusters: 
         row_building = cluster(name_item=i['Cluster'],priority_item=i['Priority'])
-        print(i)
-        print(row_building)
         match row_building.priority:
                 case 1:
                     P1.append(row_building)
