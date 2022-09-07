@@ -7,6 +7,14 @@ import pandas as pd
 import os
 import time
 
+# This is a dictionary where the key is the cluster name and the value is the csv that
+# contains the data associated with that key
+cluster_csv = {}
+
+# clusters
+def init(clusters):
+    for i in clusters: cluster_csv = i, clusters[i]['CSV']
+
 # This function collects the current supply and demand for all clusters and stores them in "OutputData.csv" every 15 minutes
 # It uses input data from the folder InputData
 def train():
@@ -33,3 +41,6 @@ def train():
     # convert solar panel supply to power delivered to microgrid
 
     # TRAIN ON COLLECTED DATA FROM ABOVE FOR SUPPLY AND DEMAND
+    # TRAIN ON SUPPLY DATA
+    for i in cluster_csv:
+        

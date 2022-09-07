@@ -5,6 +5,7 @@ import ML
 import FSM
 import serial
 import time
+import pandas as pd
 
 UPPERBOUND = 60.05
 LOWERBOUND = 59.95
@@ -17,7 +18,10 @@ ser = serial.Serial(
 )
 
 if __name__ == "__main__":
-    FSM.init()
+    # Read from Building CSV and initialize all modules with cluster priorities
+    clusters = pd.read_csv("BuildingList.csv")
+    FSM.init(clusters.to_dict('index'))
+    ML.init(clusters.to_dict('index'))
 
     while True: 
         if (time.time() - time15 >= 900): #TODO: This assumes that everything below will run in <15 min.

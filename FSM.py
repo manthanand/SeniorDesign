@@ -19,12 +19,10 @@ class building:
     def reset(self):
         self.timeon = 0
 
-def init():
-    with open('./SeniorDesign/buildingList.csv', newline='') as csvfile:
-        building_reader = csv.reader(csvfile, delimiter=',')
-        for row in building_reader:
-            row_building = building(name_item=row[0],priority_item=row[1])
-            match row_building.priority:
+def init(clusters):
+    for i in clusters: 
+        row_building = building(name_item=i,priority_item=clusters[i]['Priority'])
+        match row_building.priority:
                 case '1':
                     P1.append(row_building)
                 case '2':
@@ -32,11 +30,10 @@ def init():
                 case '3':
                     P3.append(row_building)
                 case _:
-                    print("Building Omitted: " + row_building.name)
+                    print("Building Omitted: " + row_building.name)        
 
 def fsm():
     
-
 def greedy_pick():
     # read from current_data.csv
     # read from predicted_data.csv
