@@ -11,6 +11,7 @@ from keras.layers import Dense
 from keras.layers import LSTM
 import jinja2
 
+
 # split a univariate sequence into samples
 def split_sequence(sequence, n_steps):
     X, y = list(), list()
@@ -26,6 +27,7 @@ def split_sequence(sequence, n_steps):
         y.append(seq_y)
     return asarray(X), asarray(y)
 
+
 def sum_rows(dates, values):
     csv = []
     summed_data = []
@@ -37,9 +39,10 @@ def sum_rows(dates, values):
         summed_data.append(total)
         csv.append(summed_data)
         summed_data = []
-    dataframe = pd.DataFrame(csv, columns =['DateTime', 'Summed Power'])
+    dataframe = pd.DataFrame(csv, columns=['DateTime', 'Summed Power'])
     dataframe.style.hide_index()
-    dataframe.to_csv("CSV Data/Running Data.csv", index = False)
+    dataframe.to_csv("CSV Data/Running Data.csv", index=False)
+
 
 def machine_learning(df, dates):
     values = df.values.astype('float32')
@@ -71,28 +74,30 @@ def machine_learning(df, dates):
     print('MSE: %.3f, RMSE: %.3f, MAE: %.3f' % (mse, sqrt(mse), mae))
     # make a prediction for 15, 30, 45, and 60 minutes
     values = values.tolist()
+    current = values[len(values) - 1]
     yhat_15min = compute_prediction(model, values[-5:], n_steps)
-    values.append(yhat_15min[0][0]) 
+    values.append(yhat_15min[0][0])
     yhat_30min = compute_prediction(model, values[-5:], n_steps)
-    values.append(yhat_30min[0][0]) 
+    values.append(yhat_30min[0][0])
     yhat_45min = compute_prediction(model, values[-5:], n_steps)
     yhat_45min = yhat_45min.tolist()
-    values.append(yhat_45min[0][0]) 
+    values.append(yhat_45min[0][0])
     yhat_60min = compute_prediction(model, values[-5:], n_steps)
+    return [current, yhat_15min[0][0], yhat_30min[0][0], yhat_45min[0][0], yhat_60min[0][0]]
 
 
-#Commented out since we won't know the true value when we make our predication
-#def compute_prediction(model, five_entries, actual_result, n_steps):
-    # NOTE: need to optimize this somehow
-    #row = asarray(
-        #five_entries).reshape(
-        #(1, n_steps, 1))
-    #yhat = model.predict(row)
-    #print('Predicted: %.3f' % (yhat))
-    #accuracy = 100 - abs((actual_result - yhat) / yhat) * 100
-    #print('Accuracy: ', accuracy)
+# Commented out since we won't know the true value when we make our predication
+# def compute_prediction(model, five_entries, actual_result, n_steps):
+# NOTE: need to optimize this somehow
+# row = asarray(
+# five_entries).reshape(
+# (1, n_steps, 1))
+# yhat = model.predict(row)
+# print('Predicted: %.3f' % (yhat))
+# accuracy = 100 - abs((actual_result - yhat) / yhat) * 100
+# print('Accuracy: ', accuracy)
 
-    
+
 def compute_prediction(model, five_entries, n_steps):
     # NOTE: need to optimize this somehow
     row = asarray(
@@ -101,8 +106,9 @@ def compute_prediction(model, five_entries, n_steps):
     yhat = model.predict(row)
     print('Predicted: %.3f' % (yhat))
     return yhat
-    
-def load_csv(CSV):
+
+
+def generate_demand_predictions(CSV):
     # load the dataset
     path = CSV
     df = read_csv(path, header=0, index_col=0, squeeze=True)
@@ -114,9 +120,12 @@ def load_csv(CSV):
         for row in csv_reader:
             if row[0] != 'DateTime':
                 dates.append(row[0])
-    machine_learning(df, dates)
+    return machine_learning(df, dates)
+
 
 def main():
-    load_csv("CSV Data/Annex West Active Power_August.csv")
+    tada = generate_demand_predictions("CSV Data/Annex West Active Power_August.csv")
+    print(tada)
 
 main()
+
