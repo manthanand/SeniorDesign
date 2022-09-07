@@ -12,16 +12,17 @@ LOWERBOUND = 59.95
 
 BLACKOUT = 0
 
-ser = serial.Serial(
-    port=serial.tools.list_ports.comports()[len() - 1],
-    baudrate=115200
-)
+# ser = serial.Serial(
+#     port=serial.tools.list_ports.comports()[len() - 1],
+#     baudrate=115200
+# )
 
 if __name__ == "__main__":
     # Read from Building CSV and initialize all modules with cluster priorities
-    clusters = pd.read_csv("BuildingList.csv")
-    FSM.init(clusters.to_dict('index'))
-    ML.init(clusters.to_dict('index'))
+    clusters = pd.read_csv("ClusterList.csv").to_dict('records')
+    # Send list of all clusters in dictionary form[{Cluster: Name, Priority: x, CSV: file}, ...]
+    FSM.init(clusters)
+    ML.init(clusters)
 
     while True: 
         if (time.time() - time15 >= 900): #TODO: This assumes that everything below will run in <15 min.

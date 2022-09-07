@@ -1,1 +1,4 @@
-Cluster, Priority, CSV
+Cluster,Priority,CSV
+One,1,Annex East Active Power_August.csv
+Two,2,Annex West Active Power_August.csv
+Three,3,Harris East West Active Power_August.csv

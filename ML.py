@@ -1,7 +1,7 @@
 # This library is in charge of collecting data, training the ML algorithm, and making predictions
 
 import tensorflow
-from bs4 import BeautifulSoup
+#from bs4 import BeautifulSoup
 import requests
 import pandas as pd
 import os
@@ -13,8 +13,9 @@ cluster_csv = {}
 
 # clusters
 def init(clusters):
-    for i in clusters: cluster_csv = i, clusters[i]['CSV']
-
+    for i in clusters: cluster_csv[i['Cluster']] = i['CSV']
+    print(cluster_csv)
+    while True: pass
 # This function collects the current supply and demand for all clusters and stores them in "OutputData.csv" every 15 minutes
 # It uses input data from the folder InputData
 def train():
@@ -43,4 +44,4 @@ def train():
     # TRAIN ON COLLECTED DATA FROM ABOVE FOR SUPPLY AND DEMAND
     # TRAIN ON SUPPLY DATA
     for i in cluster_csv:
-        
+        read = i['CSV'].read_csv()

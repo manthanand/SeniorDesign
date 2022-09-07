@@ -13,10 +13,10 @@ P3 = []
 
 PRIORITIES = [P1, P2, P3]
 class cluster:
-    def __init__(self,name_item,priority_item,demand_set):
+    def __init__(self,name_item,priority_item):
         self.name = name_item
         self.priority = priority_item
-        self.demand_horizon = demand_set
+        self.demand_horizon = 0
         self.time_needed = TIME[priority_item - 1]
         self.timeon = 0 #Units are in timesteps (i.e if a P3 cluster was powered for 1 cycle, this would be 1)
     def reset(self):
@@ -24,13 +24,15 @@ class cluster:
 
 def init(clusters):
     for i in clusters: 
-        row_building = cluster(name_item=i,priority_item=clusters[i]['Priority'])
+        row_building = cluster(name_item=i['Cluster'],priority_item=i['Priority'])
+        print(i)
+        print(row_building)
         match row_building.priority:
-                case '1':
+                case 1:
                     P1.append(row_building)
-                case '2':
+                case 2:
                     P2.append(row_building)
-                case '3':
+                case 3:
                     P3.append(row_building)
                 case _:
                     print("Building Omitted: " + row_building.name)        
