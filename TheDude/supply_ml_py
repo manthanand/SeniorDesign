@@ -1,0 +1,2 @@
+def generate_supply_predictions():
+    return [1, 2, 3, 4, 5]

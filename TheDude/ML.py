@@ -5,12 +5,14 @@ from bs4 import BeautifulSoup
 import requests
 import pandas as pd
 import os
+import demand_ml
+import supply_ml
 import time
 
 # This is a dictionary where the key is the cluster name and the value is the csv that
 # contains the data associated with that key
 cluster_csv = {}
-predict_col = pd.read_csv('ClusterList.csv').columns
+output = pd.read_csv('ClusterList.csv')
 
 # This function creates a dictionary that will be used when training the data
 def init(clusters):
@@ -44,6 +46,6 @@ def train():
     # TRAIN ON COLLECTED DATA FROM ABOVE FOR SUPPLY AND DEMAND
     # Then write data to OutputData.CSV
     for i in cluster_csv:
-        readdata = pd.read_csv(i['CSV'])
+        pd.Dataframe([i['Cluster'], demand_ml.generate_demand_predictions(i['CSV']), supply_ml.generate_supply_predictions(i['CSV'])])
         # Train for supply
         # Train for demand  
