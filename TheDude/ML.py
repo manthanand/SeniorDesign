@@ -46,5 +46,4 @@ def train():
     for i in cluster_csv:
         readdata = pd.read_csv(i['CSV'])
         # Train for supply
-        # Train for demand
-        writedata = pd.   
+        # Train for demand  
