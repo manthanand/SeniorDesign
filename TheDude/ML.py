@@ -46,6 +46,5 @@ def train():
     # TRAIN ON COLLECTED DATA FROM ABOVE FOR SUPPLY AND DEMAND
     # Then write data to OutputData.CSV
     for i in cluster_csv:
-        pd.Dataframe([i['Cluster'], demand_ml.generate_demand_predictions(i['CSV']), supply_ml.generate_supply_predictions(i['CSV'])])
-        # Train for supply
-        # Train for demand  
+        output[0] = [i['Cluster']] + demand_ml.generate_demand_predictions(i['CSV']) + supply_ml.generate_supply_predictions(i['CSV'])
+        output.to_csv('OutputData.csv', encoding='utf-8', index=False) 
