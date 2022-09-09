@@ -4,6 +4,7 @@
 import ML
 import FSM
 import serial
+from serial.tools import list_ports
 import time
 import pandas as pd
 
@@ -12,10 +13,10 @@ LOWERBOUND = 59.95
 
 BLACKOUT = 0
 
-# ser = serial.Serial(
-#     port=serial.tools.list_ports.comports()[len() - 1],
-#     baudrate=115200
-# )
+ser = serial.Serial(
+    port=list_ports.comports()[len() - 1],
+    baudrate=115200
+)
 
 if __name__ == "__main__":
     # Read from Building CSV and initialize all modules with cluster priorities
