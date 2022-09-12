@@ -1,5 +1,6 @@
 from pickle import FALSE, TRUE
 import csv
+import pandas as pd
 
 # Time each cluster will be on (highest to lowest) 0 indicates always powered
 TIME = [0,4,2]
@@ -16,29 +17,40 @@ class cluster:
     def __init__(self,name_item,priority_item):
         self.name = name_item
         self.priority = priority_item
-        self.demand_horizon = 0
+        self.demand_horizon = [0] * 8
         self.time_needed = TIME[priority_item - 1]
         self.timeon = 0 #Units are in timesteps (i.e if a P3 cluster was powered for 1 cycle, this would be 1)
     def reset(self):
         self.timeon = 0
+    def increment_timeon(self):
+        self.timeon = self.timeon + 1
+    def update_demand_horizon(self, demand_set):
+        self.demand_horizon = demand_set
 
 def init(clusters):
     for i in clusters: 
-        row_building = cluster(name_item=i['Cluster'],priority_item=i['Priority'])
-        match row_building.priority:
-                case 1:
-                    P1.append(row_building)
-                case 2:
-                    P2.append(row_building)
-                case 3:
-                    P3.append(row_building)
-                case _:
-                    print("Building Omitted: " + row_building.name)        
+        row_cluster = cluster(name_item=i,priority_item=clusters[i]['Priority'])
+        if row_cluster.priority == '1': P1 = updated_record(P1, row_cluster)
+        elif row_cluster.priority == '2': P2 = updated_record(P2, row_cluster)
+        elif row_cluster.priority == '3': P3 = updated_record(P3, row_cluster)
+        else: print("Cluster Omitted: " + row_cluster.name)
+    # initialize the csv file that stores the history of building power      
+    headerset = []
+    headerset[0] = "timestamp"
+    i = 1
+    for cluster_set in PRIORITIES:
+        for item in cluster_set:
+            headerset[i] = item.name
+            i += 1
+    headerset[i] = "Power Stored"
+
+    powered_cluster_writer = pd.DataFrame(headerset)
+    powered_cluster_writer.to_csv('./SeniorDesign/PowerRequirements.csv')
 
 def updated_record(list_of_clusters, cluster_item):
     for old_item in list_of_clusters:
         if cluster_item.name == old_item.name:
-            cluster_item.time_on = old_item.time_on
+            cluster_item.timeon = old_item.timeon
             list_of_clusters.remove(old_item)
             list_of_clusters.append(cluster_item)
             break
@@ -73,6 +85,21 @@ def clear_lower_priorities(level):
         if item.priority <= level:
             powered_clusters.remove(item)
 
+def cluster_writer(list_of_clusters, storage_value, timestamp):
+    powered_cluster_set = pd.read_csv('./SeniorDesign/PowerRequirements.csv')
+    if len(powered_cluster_set) > 15:
+        powered_cluster_set.drop(0)
+
+    new_entry = [0] * len(powered_cluster_set[0])
+    new_entry[0] = timestamp
+    new_entry[-1] = storage_value
+
+    i = 1
+    for i in range(len(new_entry)-1):
+        new_entry[i] = list_of_clusters[i-1]
+
+    powered_cluster_set.to_csv('./SeniorDesign/PowerRequirements.csv')
+
 def cluster_reader(filepath):
     with open(filepath, newline='') as csvfile:
         cluster_reader = csv.reader(csvfile, delimiter=',')
@@ -91,14 +118,14 @@ def cluster_reader(filepath):
 # some details on implementation may be slightly different.
 
 # general procedure:
-# increase the time_on statistic for currently powered clusters
+# increase the timeon statistic for currently powered clusters
 # read the supply horizons, and update any important records i.e. priority lists and lists of powered clusters
 # allocate power to Tier 1 clusters as much as possible
 def fsm(time_step):
     for item in powered_clusters:
-            item.time_on += 1
+            item.increment_timeon
 
-    remaining_supply_horizon = cluster_reader('./SeniorDesign/clusterInit.csv')
+    remaining_supply_horizon = cluster_reader('./SeniorDesign/OutputData.csv')
 
     '''
     P1 SETUP ---------------------
@@ -106,7 +133,6 @@ def fsm(time_step):
 
     # this stores the total P1 demand and a flag for whether or not the program should add more clusters.
     P1_demand = [0] * 8
-    additions_permitted_after_P1 = TRUE
 
     # calculate the total P1 demand and remove P1 clusters from the list of clusters that should be powered, temporarily
     for item in P1:
@@ -121,11 +147,11 @@ def fsm(time_step):
         for item in P1:
             powered_clusters.append(item)
     else:
-        additions_permitted_after_P1 = FALSE
         for item in P1:
             if verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon):
                 powered_clusters.append(item)
-        return powered_clusters
+        cluster_writer(powered_clusters, remaining_supply_horizon[0], time_step)
+        return
     
     '''
     P2 and P3 SETUP ---------------------
@@ -137,14 +163,14 @@ def fsm(time_step):
     # find a tier 2 cluster to power along the time horizon
     # then find a tier 3 cluster to power along the shorter time horizon
     if time_step % TIME[1] == 0:
-        # find the maximum time_on in each priority list. remove each non-P1 item from the list of powered_clusters as well
+        # find the maximum timeon in each priority list. remove each non-P1 item from the list of powered_clusters as well
         tier2standard = 0
         tier3standard = 0
         for item in P2:
-            if item.time_on > tier2standard: tier2standard = item.time_on
+            if item.timeon > tier2standard: tier2standard = item.timeon
 
         for item in P3:
-            if item.time_on > tier3standard: tier3standard = item.time_on
+            if item.timeon > tier3standard: tier3standard = item.timeon
 
         clear_lower_priorities(2)
 
@@ -156,7 +182,7 @@ def fsm(time_step):
             ran_out = TRUE
             for item in P2:
                 functional_item = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon)
-                if functional_item and item.time_on < tier2standard and item not in powered_clusters:
+                if functional_item and item.timeon < tier2standard and item not in powered_clusters:
                     powered_clusters.append(item)
                     remaining_supply_horizon = pointwise_subtraction(remaining_supply_horizon, item.demand_horizon)
                     ran_out = FALSE
@@ -166,7 +192,7 @@ def fsm(time_step):
             if not ran_out:
                 for item in P3:
                     functional_item = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon)
-                    if functional_item and item.time_on < tier3standard and item not in powered_clusters:
+                    if functional_item and item.timeon < tier3standard and item not in powered_clusters:
                         powered_clusters.append(item)
                         remaining_supply_horizon = pointwise_subtraction(remaining_supply_horizon, item.demand_horizon)
                         ran_out = FALSE
@@ -180,7 +206,7 @@ def fsm(time_step):
         P2_used = [0] * 8
 
         for item in P3:
-            if item.time_on > tier3standard: tier3standard = item.time_on
+            if item.timeon > tier3standard: tier3standard = item.timeon
 
         # two cases:
             # the P2 clusters are sustainable if no additional P3 clusters are powered
@@ -193,7 +219,6 @@ def fsm(time_step):
 
         clear_lower_priorities(3)
                 
-        
         # if the P2 clusters require more power than the supply can provide, shut everything down
         if not verify_horizon_compatibility(remaining_supply_horizon, P2_used):
             power_P3_clusters = FALSE
@@ -212,7 +237,7 @@ def fsm(time_step):
                 # if there is no such cluster, then break. that's the maximum amount of P3 clusters.
                 for item in P3:
                     functional_item = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon)
-                    if functional_item and item.time_on < tier3standard and item not in powered_clusters:
+                    if functional_item and item.timeon < tier3standard and item not in powered_clusters:
                         powered_clusters.append(item)
                         remaining_supply_horizon = pointwise_subtraction(remaining_supply_horizon, item.demand_horizon)
                         ran_out = FALSE
@@ -242,4 +267,5 @@ def fsm(time_step):
             remaining_supply_horizon = pointwise_subtraction(remaining_supply_horizon, P3_used)
         
 
-    return powered_clusters, remaining_supply_horizon
+    cluster_writer(powered_clusters, remaining_supply_horizon[0], time_step)
+    return
