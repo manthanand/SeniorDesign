@@ -1,6 +1,7 @@
 # This library is in charge of collecting data, training the ML algorithm, and making predictions
 
 import tensorflow
+import Main
 from bs4 import BeautifulSoup
 import requests
 import pandas as pd
@@ -9,17 +10,15 @@ import demand_ml
 import supply_ml
 import time
 
-clusterfp = "TheDude/ClusterList.csv"
-demandfp = "TheDude/Demand Data/"
 # This is a dictionary where the key is the cluster name and the value is the csv that
 # contains the data associated with that key
 cluster_csv = {}
-output = pd.read_csv(clusterfp)
+output = pd.read_csv(Main.clusterfp)
 
 # This function creates a dictionary that will be used when training the data
 def init():
-    clusters = pd.read_csv(clusterfp).to_dict('records')
-    for i in clusters: cluster_csv[i['Cluster']] = demandfp + i['CSV']
+    clusters = pd.read_csv(Main.clusterfp).to_dict('records')
+    for i in clusters: cluster_csv[i['Cluster']] = Main.demandfp + i['CSV']
 
 # This function collects the current supply and demand for all clusters and stores them in "OutputData.csv" every 15 minutes
 # It uses input data from the folder InputData
