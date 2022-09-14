@@ -9,14 +9,17 @@ import demand_ml
 import supply_ml
 import time
 
+clusterfp = "TheDude/ClusterList.csv"
+demandfp = "TheDude/Demand Data/"
 # This is a dictionary where the key is the cluster name and the value is the csv that
 # contains the data associated with that key
 cluster_csv = {}
-output = pd.read_csv('ClusterList.csv')
+output = pd.read_csv(clusterfp)
 
 # This function creates a dictionary that will be used when training the data
-def init(clusters):
-    for i in clusters: cluster_csv[i['Cluster']] = './CSV Data/' + i['CSV']
+def init():
+    clusters = pd.read_csv(clusterfp).to_dict('records')
+    for i in clusters: cluster_csv[i['Cluster']] = demandfp + i['CSV']
 
 # This function collects the current supply and demand for all clusters and stores them in "OutputData.csv" every 15 minutes
 # It uses input data from the folder InputData
@@ -46,5 +49,8 @@ def train():
     # TRAIN ON COLLECTED DATA FROM ABOVE FOR SUPPLY AND DEMAND
     # Then write data to OutputData.CSV
     for i in cluster_csv:
-        output[0] = [i['Cluster']] + demand_ml.generate_demand_predictions(i['CSV']) + supply_ml.generate_supply_predictions(i['CSV'])
+        output[0] = [cluster_csv[i]] + demand_ml.generate_demand_predictions(cluster_csv[i]) + supply_ml.generate_supply_predictions(cluster_csv[i])
         output.to_csv('OutputData.csv', encoding='utf-8', index=False) 
+
+init()
+train()

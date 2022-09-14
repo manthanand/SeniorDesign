@@ -124,8 +124,5 @@ def generate_demand_predictions(CSV):
 
 
 def main():
-    tada = generate_demand_predictions("CSV Data/Annex West Active Power_August.csv")
+    tada = generate_demand_predictions("../CSV Data/Annex West Active Power_August.csv")
     print(tada)
-
-main()
-

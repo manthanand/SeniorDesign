@@ -15,7 +15,7 @@ void loop() {
 //      Serial.println("Error");
 //      break
 //    }
-//    delay(3); //wait 3ms before checking for 0's again
+    delay(3); //wait 3ms before checking for 0's again
     count++; //need to make sure that 15 isn't too large (i.e if the bounce stays within .05V the next time analog Read occurs, need to decrease it)
     //also need to make sure that analogRead can be run in quick succession without reading bad values
   }
