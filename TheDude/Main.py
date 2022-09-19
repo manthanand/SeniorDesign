@@ -13,10 +13,6 @@ LOWERBOUND = 59.95
 
 BLACKOUT = 0
 
-clusterfp = "TheDude/ClusterList.csv"
-demandfp = "TheDude/Demand Data/"
-supplyfp = "TheDude/SupplyData.csv"
-
 ser = serial.Serial(
     port=list_ports.comports()[len() - 1],
     baudrate=115200
