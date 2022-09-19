@@ -107,8 +107,8 @@ def set_timeon_standard(priority_list):
     matched_timeons = True
 
     for item in priority_list:
-        if item.timeon > standard_value: 
-            standard_value = item.timeon
+        if item.timeon != standard_value: 
+            if item.timeon > standard_value: standard_value = item.timeon
             matched_timeons = False
 
     return -1 if matched_timeons else standard_value
