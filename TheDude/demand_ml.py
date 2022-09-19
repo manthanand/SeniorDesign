@@ -10,7 +10,6 @@ from keras import Sequential
 from keras.layers import Dense
 from keras.layers import LSTM
 import jinja2
-import csv
 
 
 # split a univariate sequence into samples
@@ -115,6 +114,7 @@ def generate_demand_predictions(CSV):
     df = read_csv(path, header=0, index_col=0, squeeze=True)
     # retrieve the values
     dates = []
+    import csv
     with open(CSV, 'r') as f:
         csv_reader = csv.reader(f)
         for row in csv_reader:
@@ -124,5 +124,8 @@ def generate_demand_predictions(CSV):
 
 
 def main():
-    tada = generate_demand_predictions("../CSV Data/Annex West Active Power_August.csv")
+    tada = generate_demand_predictions("CSV Data/Annex West Active Power_August.csv")
     print(tada)
+
+main()
+

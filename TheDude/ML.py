@@ -11,6 +11,7 @@ import time
 
 clusterfp = "TheDude/ClusterList.csv"
 demandfp = "TheDude/Demand Data/"
+supplyfp = "TheDude/SupplyData.csv"
 # This is a dictionary where the key is the cluster name and the value is the csv that
 # contains the data associated with that key
 cluster_csv = {}
@@ -37,19 +38,16 @@ def train():
         myFile.write(soup.text)
     myFile.close()
 
-    dateframe = pd.read_csv(text)
-    dateframe.to_csv(weathercsv)
+    weather_df = pd.read_csv(text)
+    weather_df.to_csv(weathercsv)
     myFile.close()
     os.remove(text)
     print("Generated new weather csv")
 
-    # convert weather data to solar panel supply
-    # convert solar panel supply to power delivered to microgrid
-
     # TRAIN ON COLLECTED DATA FROM ABOVE FOR SUPPLY AND DEMAND
     # Then write data to OutputData.CSV
     for i in cluster_csv:
-        output[0] = [cluster_csv[i]] + demand_ml.generate_demand_predictions(cluster_csv[i]) + supply_ml.generate_supply_predictions(cluster_csv[i])
+        output[0] = [cluster_csv[i]] + demand_ml.generate_demand_predictions(cluster_csv[i]) + supply_ml.generate_supply_predictions(cluster_csv[i], weather_df)
         output.to_csv('OutputData.csv', encoding='utf-8', index=False) 
 
 init()
