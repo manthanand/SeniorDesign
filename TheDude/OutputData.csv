@@ -1,1 +1,8 @@
-Clusters,Current Demand,15 Min Demand,30 Min Demand,45 Min Demand,60 Min Demand,Current Supply,15 Min Supply,30 Min Supply,45 Min Supply,60 Min Supply
+Clusters,Priority,Current Demand,15 Min Demand,30 Min Demand,45 Min Demand,60 Min Demand,Current Supply,15 Min Supply,30 Min Supply,45 Min Supply,60 Min Supply
+,,,,,,,130,205,185,185,205
+hospital,1,30,45,30,60,50,,,,,
+biolab,1,50,25,30,20,40,,,,,
+dorm1,2,45,45,50,30,30,,,,,
+dorm2,2,15,30,60,30,40,,,,,
+gym,3,20,15,15,10,20,,,,,
+lab,3,15,10,20,30,25,,,,,
