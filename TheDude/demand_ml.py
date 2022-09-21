@@ -41,13 +41,13 @@ def sum_rows(dates, values):
         summed_data = []
     dataframe = pd.DataFrame(csv, columns=['DateTime', 'Summed Power'])
     dataframe.style.hide_index()
-    dataframe.to_csv("CSV Data/Running Data.csv", index=False)
+    dataframe.to_csv("Running Data.csv", index=False)
 
 
 def machine_learning(df, dates):
     values = df.values.astype('float32')
     sum_rows(dates, values)
-    df = read_csv("CSV Data/Running Data.csv", header=0, index_col=0, squeeze=True)
+    df = read_csv("Running Data.csv", header=0, index_col=0, squeeze=True)
     values = df.values.astype('float32')
     # specify the window size
     n_steps = 5
@@ -126,6 +126,3 @@ def generate_demand_predictions(CSV):
 def main():
     tada = generate_demand_predictions("CSV Data/Annex West Active Power_August.csv")
     print(tada)
-
-main()
-

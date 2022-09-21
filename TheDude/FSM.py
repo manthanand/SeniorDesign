@@ -2,6 +2,7 @@ from __future__ import print_function
 import csv
 import pandas as pd
 import clmath
+import settings
 
 # Time each cluster will be on (highest to lowest) 0 indicates always powered
 TIME = [0,4,2]
@@ -130,7 +131,7 @@ def fsm(time_step):
     for item in powered_clusters:
             item.increment_timeon()
 
-    remaining_supply_horizon = cluster_reader('./TheDude/OutputData.csv')
+    remaining_supply_horizon = cluster_reader(settings.outputfp)
 
     '''
     P1 SETUP ---------------------

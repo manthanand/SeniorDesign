@@ -1,6 +1,7 @@
 # This program collects weather, supply, and demand data and uses that to train a Machine Learning Algorithm
 # to make accurate predictions about future supply and demand. This is used to implement a safe rolling blackout
 # sequence using a High Level State Machine.
+import settings
 import ML
 import FSM
 import serial
@@ -20,7 +21,7 @@ ser = serial.Serial(
 
 if __name__ == "__main__":
     # Read from Building CSV and initialize all modules with cluster priorities
-    clusters = pd.read_csv(clusterfp).to_dict('records')
+    clusters = pd.read_csv(settings.clusterfp).to_dict('records')
     # Send list of all clusters in dictionary form[{Cluster: Name, Priority: x, CSV: file}, ...]
     FSM.init(clusters)
     ML.init()
