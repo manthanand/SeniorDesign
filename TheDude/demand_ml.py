@@ -1,7 +1,7 @@
 import pandas as pd
 from datetime import datetime
 import math
-import tensorflow
+#import tensorflow
 from numpy import concatenate
 from numpy import sqrt
 from numpy import asarray
@@ -9,6 +9,7 @@ from pandas import read_csv
 from keras import Sequential
 from keras.layers import Dense
 from keras.layers import LSTM
+import csv
 import jinja2
 
 
@@ -41,13 +42,13 @@ def sum_rows(dates, values):
         summed_data = []
     dataframe = pd.DataFrame(csv, columns=['DateTime', 'Summed Power'])
     dataframe.style.hide_index()
-    dataframe.to_csv("Running Data.csv", index=False)
+    dataframe.to_csv("Demand Data/Running Data.csv", index=False)
 
 
 def machine_learning(df, dates):
     values = df.values.astype('float32')
     sum_rows(dates, values)
-    df = read_csv("Running Data.csv", header=0, index_col=0, squeeze=True)
+    df = read_csv("Demand Data/Running Data.csv", header=0, index_col=0, squeeze=True)
     values = df.values.astype('float32')
     # specify the window size
     n_steps = 5
@@ -58,7 +59,7 @@ def machine_learning(df, dates):
     # split into train/test
     n_test = 12
     X_train, X_test, y_train, y_test = X[:-n_test], X[-n_test:], y[:-n_test], y[-n_test:]
-    print(X_train.shape, X_test.shape, y_train.shape, y_test.shape)
+    # print(X_train.shape, X_test.shape, y_train.shape, y_test.shape)
     # define model
     model = Sequential()
     model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(n_steps, 1)))
@@ -71,7 +72,7 @@ def machine_learning(df, dates):
     model.fit(X_train, y_train, epochs=350, batch_size=32, verbose=2, validation_data=(X_test, y_test))
     # evaluate the model
     mse, mae = model.evaluate(X_test, y_test, verbose=0)
-    print('MSE: %.3f, RMSE: %.3f, MAE: %.3f' % (mse, sqrt(mse), mae))
+    # print('MSE: %.3f, RMSE: %.3f, MAE: %.3f' % (mse, sqrt(mse), mae))
     # make a prediction for 15, 30, 45, and 60 minutes
     values = values.tolist()
     current = values[len(values) - 1]
@@ -104,7 +105,7 @@ def compute_prediction(model, five_entries, n_steps):
         five_entries).reshape(
         (1, n_steps, 1))
     yhat = model.predict(row)
-    print('Predicted: %.3f' % (yhat))
+    # print('Predicted: %.3f' % (yhat))
     return yhat
 
 
@@ -114,7 +115,6 @@ def generate_demand_predictions(CSV):
     df = read_csv(path, header=0, index_col=0, squeeze=True)
     # retrieve the values
     dates = []
-    import csv
     with open(CSV, 'r') as f:
         csv_reader = csv.reader(f)
         for row in csv_reader:
@@ -122,7 +122,49 @@ def generate_demand_predictions(CSV):
                 dates.append(row[0])
     return machine_learning(df, dates)
 
+def accuracy(last_15min_predication, CSV):
+    df = read_csv(CSV, header=0, index_col=0, squeeze=True)
+    values = df.values.astype('float32')
+    values = values.tolist()
+    try:
+        actual_result = sum(values[len(values) - 1])
+    except:
+        actual_result = values[len(values) - 1]
+    # actual_result = sum(values[index])
+    acc = 100 - abs((actual_result - last_15min_predication) / actual_result * 100)
+    return acc
 
-def main():
-    tada = generate_demand_predictions("CSV Data/Annex West Active Power_August.csv")
-    print(tada)
+def test_demonstration():
+    predictions = []
+    acc = []
+    CSV = "Demand Data/Annex West Active Power_August.csv"
+    true_data = [664.6799945831299, 673.8599910736084, 644.7099781036377, 638.129976272583]
+    demand_data = pd.read_csv(CSV, header=0, index_col=0, squeeze=True)
+    dates = []
+    for i in range(demand_data.size - 4, demand_data.size):
+        dates = []
+        with open(CSV, 'r') as f:
+            csv_reader = csv.reader(f)
+            for row in csv_reader:
+                if row[0] != 'DateTime':
+                    dates.append(row[0])
+        current_predictions = machine_learning(demand_data[0:i], dates[0:i])
+        predictions.append(current_predictions)
+        try:
+            if len(predictions) > 1:
+                latest = (predictions[len(predictions) - 2][1])
+                print(latest)
+                update = accuracy(latest, "Demand Data/Running Data.csv")
+                print(update)
+                acc.append(update)
+        except:
+            nothing = 0
+    print("Predictions")
+    print(predictions)
+    print("Accuracy after each prediction")
+    print(acc)
+    # tada = generate_demand_predictions("Demand Data/Annex West Active Power_August.csv")
+    # print(tada)
+# update = accuracy(100, "Demand Data/Running Data.csv")
+test_demonstration()
+
