@@ -14,6 +14,8 @@ LOWERBOUND = 59.95
 
 BLACKOUT = 1
 
+TIME_HORIZON = 15 #minutes
+
 # ser = serial.Serial(
 #     port=list_ports.comports()[len() - 1],
 #     baudrate=115200
@@ -25,16 +27,16 @@ if __name__ == "__main__":
     # Send list of all clusters in dictionary form[{Cluster: Name, Priority: x, CSV: file}, ...]
     FSM.init(clusters)
 
-    time15 = time.time() - 901
+    time15 = time.time() - TIME_HORIZON * 60 + 1
     runs = 0
     while True:
         FSM.reset
-        if (time.time() - time15 >= 900): #NOTE: This assumes that everything below will run in <15 min.
+        if (time.time() - time15 >= (TIME_HORIZON * 60)): #NOTE: This assumes that everything below will run in <15 min.
             ML.train() # always train no matter what
             if BLACKOUT: 
                 BLACKOUT = FSM.fsm(runs) #returns whether blackout is continuing or not
                 runs += 1
-                with open('./TheDude/PowerRequirements.csv', "r", encoding="utf-8", errors="ignore") as data:
+                with open(settings.powerreqscsv, "r", encoding="utf-8", errors="ignore") as data:
                     final_line = data.readlines()[-1]
                     final_line = final_line.split(',')
                     BLACKOUT = 0

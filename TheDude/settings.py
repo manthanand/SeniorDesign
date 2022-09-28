@@ -1,4 +1,5 @@
-clusterfp = "TheDude/ClusterList.csv"
-demandfp = "TheDude/Demand Data/"
-supplyfp = "TheDude/SupplyData.csv"
-outputfp = "TheDude/OutputData.csv"
+clusterfp = "ClusterList.csv"
+demandfp = "Demand Data/"
+supplyfp = "SupplyData.csv"
+outputfp = "OutputData.csv"
+powerreqscsv = 'PowerRequirements.csv'

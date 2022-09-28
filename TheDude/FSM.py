@@ -15,7 +15,6 @@ P1 = []
 P2 = []
 P3 = []
 
-powerreqscsv = './TheDude/PowerRequirements.csv'
 
 # List of clusters with varying priorities
 
@@ -54,7 +53,7 @@ def init(clusters):
     data = [ [0]*len(headerset) for i in range(15)]
 
     powered_cluster_writer = pd.DataFrame(data, columns=headerset)
-    powered_cluster_writer.to_csv(powerreqscsv, index=False)
+    powered_cluster_writer.to_csv(settings.powerreqscsv, index=False)
 
 def update_record(list_of_clusters, cluster_name, demand_horizon):
     for old_item in list_of_clusters:
@@ -78,7 +77,7 @@ def clear_lower_priorities(level, list_of_clusters):
     return preserve_list
 
 def cluster_writer(list_of_clusters, storage_value, timestamp):
-    powered_cluster_set = pd.read_csv(powerreqscsv, index_col=False)
+    powered_cluster_set = pd.read_csv(settings.powerreqscsv, index_col=False)
 
     new_entry = [0] * int(len(TOTAL_CLUSTERS) + 2)
     new_entry[0] = timestamp
@@ -91,7 +90,7 @@ def cluster_writer(list_of_clusters, storage_value, timestamp):
     powered_cluster_set.loc[len(powered_cluster_set)] = new_entry
     powered_cluster_set.drop(powered_cluster_set.index[0], inplace=True)
 
-    powered_cluster_set.to_csv(powerreqscsv, index=False)
+    powered_cluster_set.to_csv(settings.powerreqscsv, index=False)
 
 def cluster_reader(filepath):
     reading_item = pd.read_csv(filepath)
