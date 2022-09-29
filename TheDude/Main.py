@@ -47,5 +47,5 @@ if __name__ == "__main__":
                 if (not BLACKOUT) : FSM.reset()
             else: #if not in blackout, check frequency for blackout indication
                 # freq = ser.read()
-                if freq < UPPERBOUND and freq > LOWERBOUND: freq = ser.read() # This blocks until an out-of-bounds frequency is read
+                if freq < UPPERBOUND and freq > LOWERBOUND: freq = 60 # This blocks until an out-of-bounds frequency is read
                 else: BLACKOUT = 1
