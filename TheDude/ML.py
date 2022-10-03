@@ -44,5 +44,3 @@ def train():
     print(clusters.iterrows())
     for i, r in clusters.iterrows(): output.loc[len(output.index)] = ([r["Cluster"]] + [r["Priority"]] + demand.generate_demand_predictions(settings.demandfp + r["CSV"]) + ["", ""])
     output.to_csv(settings.outputfp, encoding='utf-8', index=False)  # Write Dataframe to csv
-
-train()

@@ -1,5 +1,5 @@
 clusterfp = "ClusterList.csv"
-demandfp = "Demand Data/"
+demandfp = "BuildingData2020/"
 supplyfp = "SupplyData.csv"
 outputfp = "OutputData.csv"
 powerreqscsv = 'PowerRequirements.csv'
