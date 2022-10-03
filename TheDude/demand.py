@@ -12,6 +12,7 @@ from keras.layers import LSTM
 import csv
 import jinja2
 
+amount_of_data_analyzed = 300
 
 # split a univariate sequence into samples
 def split_sequence(sequence, n_steps):
@@ -32,25 +33,30 @@ def split_sequence(sequence, n_steps):
 def sum_rows(dates, values):
     csv = []
     summed_data = []
-    for value, date in zip(values, dates):
-        total = 0
-        for num in value:
-            total += num
-        summed_data.append(date)
-        summed_data.append(total)
-        csv.append(summed_data)
+    difference = []
+    summed_data.append(dates[0])
+    summed_data.append(values[0])
+    difference.append(values[0])
+    csv.append(summed_data)
+    for i in range(1, len(values)):
         summed_data = []
-    dataframe = pd.DataFrame(csv, columns=['DateTime', 'Summed Power'])
+        summed_data.append(dates[i])
+        if values[i] - values[i - 1] < 0:
+            summed_data.append(values[i - 1] - values[i - 2])
+            difference.append(values[i - 1] - values[i - 2])
+        else:
+            summed_data.append(values[i] - values[i - 1])
+            difference.append(values[i] - values[i - 1])
+        csv.append(summed_data)
+    dataframe = pd.DataFrame(csv, columns=['DateTime', 'value'])
     dataframe.style.hide_index()
     dataframe.to_csv("Demand Data/Running Data.csv", index=False)
+    return difference
 
 
 def machine_learning(df, dates):
-    values = df.values.astype('float32')
-    sum_rows(dates, values)
-    df = read_csv("Demand Data/Running Data.csv", header=0, index_col=0, squeeze=True)
-    values = df.values.astype('float32')
-    # specify the window size
+    values = df.loc[:,'value'].values
+    values = (sum_rows(dates, values))[len(values) - amount_of_data_analyzed: len(values) - 1]
     n_steps = 5
     # split into samples
     X, y = split_sequence(values, n_steps)
@@ -69,12 +75,11 @@ def machine_learning(df, dates):
     # compile the model
     model.compile(optimizer='adam', loss='mse', metrics=['mae'])
     # fit the model
-    model.fit(X_train, y_train, epochs=350, batch_size=32, verbose=2, validation_data=(X_test, y_test))
+    model.fit(X_train, y_train, epochs=100, batch_size=32, verbose=2, validation_data=(X_test, y_test))
     # evaluate the model
     mse, mae = model.evaluate(X_test, y_test, verbose=0)
     # print('MSE: %.3f, RMSE: %.3f, MAE: %.3f' % (mse, sqrt(mse), mae))
     # make a prediction for 15, 30, 45, and 60 minutes
-    values = values.tolist()
     current = values[len(values) - 1]
     yhat_15min = compute_prediction(model, values[-5:], n_steps)
     values.append(yhat_15min[0][0])
@@ -118,7 +123,7 @@ def generate_demand_predictions(CSV):
     with open(CSV, 'r') as f:
         csv_reader = csv.reader(f)
         for row in csv_reader:
-            if row[0] != 'DateTime':
+            if row[0] != 'human_timestamp':
                 dates.append(row[0])
     return machine_learning(df, dates)
 
@@ -137,16 +142,16 @@ def accuracy(last_15min_predication, CSV):
 def test_demonstration():
     predictions = []
     acc = []
-    CSV = "Demand Data/Annex West Active Power_August.csv"
+    CSV = "BuildingData2018/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv"
     true_data = [664.6799945831299, 673.8599910736084, 644.7099781036377, 638.129976272583]
-    demand_data = pd.read_csv(CSV, header=0, index_col=0, squeeze=True)
+    demand_data = pd.read_csv(CSV)
     dates = []
     for i in range(demand_data.size - 4, demand_data.size):
         dates = []
         with open(CSV, 'r') as f:
             csv_reader = csv.reader(f)
             for row in csv_reader:
-                if row[0] != 'DateTime':
+                if row[0] != 'timestamp':
                     dates.append(row[0])
         current_predictions = machine_learning(demand_data[0:i], dates[0:i])
         predictions.append(current_predictions)
@@ -166,5 +171,5 @@ def test_demonstration():
     # tada = generate_demand_predictions("Demand Data/Annex West Active Power_August.csv")
     # print(tada)
 # update = accuracy(100, "Demand Data/Running Data.csv")
-test_demonstration()
+# test_demonstration()
 

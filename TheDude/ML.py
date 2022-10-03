@@ -12,6 +12,7 @@ import supply_ml
 # contains the data associated with that key
 clusters = pd.read_csv(settings.clusterfp)
 
+
 # This function collects the current supply and demand for all clusters and stores them in "OutputData.csv" every 15 minutes
 # It uses input data from the folder InputData
 def train():
@@ -23,6 +24,7 @@ def train():
 
     # THIS WILL COLLECT WEATHER DATA AND STORE IT IN "WeatherCSV.csv"
     url = "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/Austin%2C%20TX?unitGroup=us&include=hours&key=5BSYNGCVWT67XMUAJSFWRV4LT&contentType=csv"
+    weathercsv = "./TheDude/Supply Data/SolarTrainingData.csv"
     text = "WeatherText.txt"
 
     try:
@@ -35,12 +37,25 @@ def train():
         os.remove(text)
         print("Generated new weather dataframe")
     except:
-        weather_df = pd.read_csv(text)  # use old one if cant read from url
+        weather_df = pd.read_csv(weathercsv)  # use old one if cant read from url
 
     # Write Supply data to dataframe
     output.loc[len(output.index)] = (
                 ["Supply", "", "", "", "", "", ""] + supply_ml.generate_supply_predictions(weather_df))
     # Write Demand data to dataframe
     print(clusters.iterrows())
-    for i, r in clusters.iterrows(): output.loc[len(output.index)] = ([r["Cluster"]] + [r["Priority"]] + demand.generate_demand_predictions(settings.demandfp + r["CSV"]) + ["", ""])
+    for i, r in clusters.iterrows():
+        output.loc[len(output.index)] = ([r["Cluster"]] + [r["Priority"]] + demand.generate_demand_predictions(
+            settings.demandfp + find(r["Cluster"] + "*", settings.demandfp)) + ["", ""])
     output.to_csv(settings.outputfp, encoding='utf-8', index=False)  # Write Dataframe to csv
+
+import os, fnmatch
+def find(pattern, path):
+    result = ""
+    for root, dirs, files in os.walk(path):
+        for name in files:
+            if fnmatch.fnmatch(name, pattern):
+                result = name
+    return result
+
+# train()
