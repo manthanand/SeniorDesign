@@ -23,6 +23,8 @@ P3 = []
 
 total_battery = 0
 
+run_count = 0
+
 # List of clusters with varying priorities
 
 PRIORITIES = [P1, P2, P3]
@@ -63,6 +65,7 @@ def init(clusters):
     powered_cluster_writer.to_csv(settings.powerreqscsv, index=False)
 
 def reset():
+    run_count = 0
     for item in TOTAL_CLUSTERS:
         item.reset()
 
@@ -138,7 +141,8 @@ def set_timeon_standard(priority_list):
 # increase the timeon statistic for currently powered clusters
 # read the supply horizons, and update any important records i.e. priority lists and lists of powered clusters
 # allocate power to Tier 1 clusters as much as possible
-def fsm(time_step):
+def fsm():
+    global run_count
     global total_battery
     global powered_clusters
     for item in powered_clusters:
@@ -178,7 +182,7 @@ def fsm(time_step):
                 remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, item.demand_horizon)
                 if remaining_supply_horizon[0] < 0: remaining_supply_horizon[0] = 0
                 powered_clusters.append(item)
-        cluster_writer(powered_clusters, remaining_supply_horizon[0], time_step)
+        cluster_writer(powered_clusters, remaining_supply_horizon[0], run_count)
         return 1
     
     
@@ -190,7 +194,7 @@ def fsm(time_step):
     # depower all clusters first
     # find a tier 2 cluster to power along the time horizon
     # then find a tier 3 cluster to power along the shorter time horizon
-    if time_step % TIME[1] == 0:
+    if run_count % TIME[1] == 0:
         use_battery = total_battery > BATTERY_USE_RATIO * BATTERY_CAPACITY
         # find the maximum timeon in each priority list. remove each non-P1 item from the list of powered_clusters as well
         tier2standard = set_timeon_standard(P2)
@@ -230,7 +234,7 @@ def fsm(time_step):
     # increment timeon for the previously powered clusters
     # depower all tier 3 clusters
     # find new tier 3 clusters to power along the time horizon
-    elif time_step % TIME[2] == 0:
+    elif run_count % TIME[2] == 0:
         power_P3_clusters = True
         # this stores the total demand horizon of the P2 clusters
         P2_used = [0] * DEMAND_HORIZON_LENGTH
@@ -313,5 +317,6 @@ def fsm(time_step):
 
     total_battery += remaining_supply_horizon[0]
     if total_battery > BATTERY_CAPACITY: total_battery = BATTERY_CAPACITY
-    cluster_writer(powered_clusters, total_battery, time_step)
+    cluster_writer(powered_clusters, total_battery, run_count)
+    run_count += 1
     return blackout_status
