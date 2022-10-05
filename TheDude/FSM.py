@@ -7,6 +7,8 @@ import settings
 # CONSTANTS
 DEMAND_HORIZON_LENGTH = 5
 CSV_ENTRY_LENGTH = 15
+BATTERY_CAPACITY = 60000
+BATTERY_USE_RATIO = .7
 
 # Time each cluster will be on (highest to lowest) 0 indicates always powered
 TIME = [0,4,2]
@@ -28,7 +30,7 @@ class cluster:
     def __init__(self,name_item,priority_item):
         self.name = name_item
         self.priority = priority_item
-        self.demand_horizon = [0] * 8
+        self.demand_horizon = [0] * DEMAND_HORIZON_LENGTH
         self.time_needed = TIME[priority_item - 1]
         self.timeon = 0 #Units are in timesteps (i.e if a P3 cluster was powered for 1 cycle, this would be 1)
     def reset(self):
@@ -64,11 +66,12 @@ def reset():
     for item in TOTAL_CLUSTERS:
         item.reset()
 
-def update_record(list_of_clusters, cluster_name, demand_horizon):
-    for old_item in list_of_clusters:
-        if cluster_name == old_item.name:
-            old_item.update_demand_horizon(demand_horizon)
-            break
+def update_record(list_of_list_of_clusters, cluster_name, demand_horizon):
+    for priority_list in list_of_list_of_clusters:
+        for old_item in priority_list:
+            if cluster_name == old_item.name:
+                old_item.update_demand_horizon(demand_horizon)
+                break
 
 def verify_horizon_compatibility(supply_horizon, demand_horizon, battery_power = 0):
     list3 = clmath.pointwise_subtraction(supply_horizon, demand_horizon)
@@ -112,9 +115,8 @@ def cluster_reader(filepath):
     i = 1
     while i in range(len(reading_item)):
         cluster_name = reading_item.iloc[i][0]
-        for item in PRIORITIES:
-            demand_horizon=reading_item.iloc[i][2:7].tolist()
-            update_record(item, cluster_name, demand_horizon)
+        demand_horizon=reading_item.iloc[i][2:7].tolist()
+        update_record(PRIORITIES, cluster_name, demand_horizon)
         i += 1
 
     return remaining_supply_horizon
@@ -164,21 +166,17 @@ def fsm(time_step):
     # if you can power all the P1 clusters, do so and continue
     # if not, exit the function and return the list of clusters that should be powered
     if verify_horizon_compatibility(remaining_supply_horizon, P1_demand, total_battery)[0]:
-        difference = total_battery - verify_horizon_compatibility(remaining_supply_horizon, P1_demand, total_battery)[1]
         total_battery = verify_horizon_compatibility(remaining_supply_horizon, P1_demand, total_battery)[1]
         remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, P1_demand)
-        if remaining_supply_horizon[0] < 0:
-                remaining_supply_horizon[0] += difference
+        if remaining_supply_horizon[0] < 0: remaining_supply_horizon[0] = 0
         for item in P1:
             powered_clusters.append(item)
     else:
         for item in P1:
             if verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)[0]:
-                difference = total_battery - verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)[1]
                 total_battery = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)[1]
                 remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, item.demand_horizon)
-                if remaining_supply_horizon[0] < 0:
-                    remaining_supply_horizon[0] += difference
+                if remaining_supply_horizon[0] < 0: remaining_supply_horizon[0] = 0
                 powered_clusters.append(item)
         cluster_writer(powered_clusters, remaining_supply_horizon[0], time_step)
         return 1
@@ -193,6 +191,7 @@ def fsm(time_step):
     # find a tier 2 cluster to power along the time horizon
     # then find a tier 3 cluster to power along the shorter time horizon
     if time_step % TIME[1] == 0:
+        use_battery = total_battery > BATTERY_USE_RATIO * BATTERY_CAPACITY
         # find the maximum timeon in each priority list. remove each non-P1 item from the list of powered_clusters as well
         tier2standard = set_timeon_standard(P2)
         tier3standard = set_timeon_standard(P3)
@@ -206,9 +205,13 @@ def fsm(time_step):
             # less than the most-powered cluster that was powered in the last time horizon, power it
             ran_out = True
             for item in P2:
-                functional_item = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon)[0]
+                if use_battery:
+                    functional_item = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)[0]
+                else:
+                    functional_item = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon)[0]
                 if functional_item and (tier2standard == -1 or item.timeon < tier2standard) and item not in powered_clusters:
                     powered_clusters.append(item)
+                    if use_battery: total_battery = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)[1]
                     remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, item.demand_horizon)
                     ran_out = False
                     break                    # if all items in the list were checked and none could be picked, then ran_out continues to be true
@@ -252,11 +255,9 @@ def fsm(time_step):
             power_P3_clusters = False
             powered_clusters = clear_lower_priorities(2, powered_clusters)
         else:
-            difference = total_battery - verify_horizon_compatibility(remaining_supply_horizon, P2_used, total_battery)[1]
             total_battery = verify_horizon_compatibility(remaining_supply_horizon, P2_used, total_battery)[1]
             remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, P2_used)
-            if remaining_supply_horizon[0] < 0:
-                remaining_supply_horizon[0] += difference
+            if remaining_supply_horizon[0] < 0: remaining_supply_horizon[0] = 0
         
         i = 0
         # if you have enough power for all the P2 clusters, then you can start powering P3 clusters
@@ -293,20 +294,16 @@ def fsm(time_step):
             powered_clusters = clear_lower_priorities(2, powered_clusters)
             powered_clusters = clear_lower_priorities(3, powered_clusters)
         elif not verify_horizon_compatibility(clmath.pointwise_subtraction(remaining_supply_horizon, P2_used), P3_used, total_battery)[0]:
-            difference = total_battery - verify_horizon_compatibility(remaining_supply_horizon, P2_used, total_battery)[1]
             total_battery = verify_horizon_compatibility(remaining_supply_horizon, P2_used, total_battery)[1]
             remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, P2_used)
             powered_clusters = clear_lower_priorities(3, powered_clusters)
-            if remaining_supply_horizon[0] < 0:
-                remaining_supply_horizon[0] += difference
+            if remaining_supply_horizon[0] < 0: remaining_supply_horizon[0] = 0
         # if everything can be powered,
         else:
-            difference = total_battery - verify_horizon_compatibility(remaining_supply_horizon, clmath.pointwise_addition(P2_used, P3_used), total_battery)[1]
             total_battery = verify_horizon_compatibility(remaining_supply_horizon, clmath.pointwise_addition(P2_used, P3_used), total_battery)[1]
             remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, P2_used)
             remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, P3_used)
-            if remaining_supply_horizon[0] < 0:
-                remaining_supply_horizon[0] += difference
+            if remaining_supply_horizon[0] < 0: remaining_supply_horizon[0] = 0
 
     blackout_status = 0
     for item in TOTAL_CLUSTERS:
@@ -315,5 +312,6 @@ def fsm(time_step):
             break
 
     total_battery += remaining_supply_horizon[0]
+    if total_battery > BATTERY_CAPACITY: total_battery = BATTERY_CAPACITY
     cluster_writer(powered_clusters, total_battery, time_step)
     return blackout_status
