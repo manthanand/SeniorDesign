@@ -21,16 +21,13 @@ if __name__ == "__main__":
     clusters = pd.read_csv(settings.clusterfp).to_dict('records')
     # Send list of all clusters in dictionary form[{Cluster: Name, Priority: x, CSV: file}, ...]
     FSM.init(clusters)
-
     time_horizon = time.time() - TIME_HORIZON * 60 + 1
-    runs = 0
     while True:
         if (time.time() - time_horizon >= (TIME_HORIZON * 60)):
             time_horizon = time.time()
             ML.train() # always train no matter what
             if BLACKOUT: 
-                BLACKOUT = FSM.fsm(runs) #returns whether blackout is continuing or not
-                runs += 1
+                BLACKOUT = FSM.fsm() #returns whether blackout is continuing or not
                 with open(settings.powerreqscsv, "r", encoding="utf-8", errors="ignore") as data:
                     final_line = data.readlines()[-1]
                     final_line = final_line.split(',')
@@ -39,4 +36,6 @@ if __name__ == "__main__":
                         if(final_line[item] == '0.0'):
                             BLACKOUT = 1
                             break
+                        else:
+                            print("Blackout Ended!")
             else: FSM.reset()
