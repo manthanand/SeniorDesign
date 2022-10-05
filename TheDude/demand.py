@@ -30,17 +30,15 @@ def split_sequence(sequence, n_steps):
     return asarray(X), asarray(y)
 
 
-def sum_rows(dates, values):
+def sum_rows (values):
     csv = []
     summed_data = []
     difference = []
-    summed_data.append(dates[0])
     summed_data.append(values[0])
     difference.append(values[0])
     csv.append(summed_data)
     for i in range(1, len(values)):
         summed_data = []
-        summed_data.append(dates[i])
         if values[i] - values[i - 1] < 0:
             summed_data.append(values[i - 1] - values[i - 2])
             difference.append(values[i - 1] - values[i - 2])
@@ -48,15 +46,15 @@ def sum_rows(dates, values):
             summed_data.append(values[i] - values[i - 1])
             difference.append(values[i] - values[i - 1])
         csv.append(summed_data)
-    dataframe = pd.DataFrame(csv, columns=['DateTime', 'value'])
-    dataframe.style.hide_index()
-    dataframe.to_csv("Demand Data/Running Data.csv", index=False)
+    # dataframe = pd.DataFrame(csv, columns=['DateTime', 'value'])
+    # dataframe.style.hide_index()
+    # dataframe.to_csv("Demand Data/Running Data.csv", index=False)
     return difference
 
 
-def machine_learning(df, dates):
+def machine_learning(df):
     values = df.loc[:,'value'].values
-    values = (sum_rows(dates, values))[len(values) - amount_of_data_analyzed: len(values) - 1]
+    values = (sum_rows(values))
     n_steps = 5
     # split into samples
     X, y = split_sequence(values, n_steps)
@@ -127,14 +125,11 @@ def generate_demand_predictions(CSV):
                 dates.append(row[0])
     return machine_learning(df, dates)
 
-def accuracy(last_15min_predication, CSV):
-    df = read_csv(CSV, header=0, index_col=0, squeeze=True)
-    values = df.values.astype('float32')
-    values = values.tolist()
+def accuracy(last_15min_predication, index):
     try:
-        actual_result = sum(values[len(values) - 1])
+        actual_result = sum(index)
     except:
-        actual_result = values[len(values) - 1]
+        actual_result = index
     # actual_result = sum(values[index])
     acc = 100 - abs((actual_result - last_15min_predication) / actual_result * 100)
     return acc
@@ -143,33 +138,24 @@ def test_demonstration():
     predictions = []
     acc = []
     CSV = "BuildingData2018/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv"
-    true_data = [664.6799945831299, 673.8599910736084, 644.7099781036377, 638.129976272583]
+    true_data = [154, 151, 157, 147]
+    j = 0
     demand_data = pd.read_csv(CSV)
     dates = []
-    for i in range(demand_data.size - 4, demand_data.size):
-        dates = []
-        with open(CSV, 'r') as f:
-            csv_reader = csv.reader(f)
-            for row in csv_reader:
-                if row[0] != 'timestamp':
-                    dates.append(row[0])
-        current_predictions = machine_learning(demand_data[0:i], dates[0:i])
+    for i in range(len(demand_data) - 4, len(demand_data)):
+        new_demand_data = demand_data.head(n=i)
+        current_predictions = machine_learning(new_demand_data)
         predictions.append(current_predictions)
-        try:
-            if len(predictions) > 1:
-                latest = (predictions[len(predictions) - 2][1])
-                print(latest)
-                update = accuracy(latest, "Demand Data/Running Data.csv")
-                print(update)
-                acc.append(update)
-        except:
-            nothing = 0
+        print(true_data[j])
+        update = accuracy(true_data[j], current_predictions[1])
+        print(update)
+        j += 1
+        acc.append(update)
     print("Predictions")
     print(predictions)
     print("Accuracy after each prediction")
     print(acc)
-    # tada = generate_demand_predictions("Demand Data/Annex West Active Power_August.csv")
-    # print(tada)
+# tada = generate_demand_predictions("Demand Data/Annex West Active Power_August.csv")
+# print(tada)
 # update = accuracy(100, "Demand Data/Running Data.csv")
-# test_demonstration()
-
+test_demonstration()
