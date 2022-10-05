@@ -25,7 +25,6 @@ if __name__ == "__main__":
     time_horizon = time.time() - TIME_HORIZON * 60 + 1
     runs = 0
     while True:
-        FSM.reset()
         if (time.time() - time_horizon >= (TIME_HORIZON * 60)):
             time_horizon = time.time()
             ML.train() # always train no matter what
