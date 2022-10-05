@@ -7,6 +7,8 @@ import pandas as pd
 import os
 import demand
 import supply_ml
+import glob
+import multiprocessing
 
 # This is a dictionary where the key is the cluster name and the value is the csv that
 # contains the data associated with that key
@@ -43,19 +45,10 @@ def train():
     output.loc[len(output.index)] = (
                 ["Supply", "", "", "", "", "", ""] + supply_ml.generate_supply_predictions(weather_df))
     # Write Demand data to dataframe
-    print(clusters.iterrows())
     for i, r in clusters.iterrows():
+        print(glob.glob(settings.demandfp + r["Cluster"] + "*"))
         output.loc[len(output.index)] = ([r["Cluster"]] + [r["Priority"]] + demand.generate_demand_predictions(
-            settings.demandfp + find(r["Cluster"] + "*", settings.demandfp)) + ["", ""])
+            glob.glob(settings.demandfp + r["Cluster"] + "*")[0]) + ["", ""])
     output.to_csv(settings.outputfp, encoding='utf-8', index=False)  # Write Dataframe to csv
-
-import os, fnmatch
-def find(pattern, path):
-    result = ""
-    for root, dirs, files in os.walk(path):
-        for name in files:
-            if fnmatch.fnmatch(name, pattern):
-                result = name
-    return result
 
 # train()
