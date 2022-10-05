@@ -17,7 +17,7 @@ clusters = pd.read_csv(settings.clusterfp)
 
 # This function collects the current supply and demand for all clusters and stores them in "OutputData.csv" every 15 minutes
 # It uses input data from the folder InputData
-def train():
+def train(start):
     # This reads all data in the csv and clears all existing data in the dataframe (for rewriting)
     output = pd.DataFrame(columns=["Clusters", "Priority", "Current Demand",
                                    "15 Min Demand", "30 Min Demand", "45 Min Demand", "60 Min Demand",
@@ -48,7 +48,8 @@ def train():
     for i, r in clusters.iterrows():
         print(glob.glob(settings.demandfp + r["Cluster"] + "*"))
         file = (glob.glob(settings.demandfp + r["Cluster"] + "*")[0])
-        predictions = demand.generate_demand_predictions(file)
+        predictions = demand.generate_demand_predictions(file, start)
         output.loc[len(output.index)] = ([r["Cluster"]] + [r["Priority"]] + predictions + ["", ""])
     output.to_csv(settings.outputfp, encoding='utf-8', index=False)  # Write Dataframe to csv
-    
+
+# train()

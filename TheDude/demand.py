@@ -104,12 +104,12 @@ def compute_prediction(model, five_entries, n_steps):
     return yhat
 
 
-def generate_demand_predictions(CSV):
+def generate_demand_predictions(CSV, start):
     # load the dataset
     path = CSV
     df = read_csv(path, header=0, index_col=0, squeeze=True)
     # retrieve the values
-    new_demand_data = df.head(n=250)
+    new_demand_data = df.head(n=start)
     current_predictions = machine_learning(new_demand_data)
     return current_predictions
 
