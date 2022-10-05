@@ -31,21 +31,13 @@ def split_sequence(sequence, n_steps):
 
 
 def sum_rows (values):
-    csv = []
-    summed_data = []
     difference = []
-    summed_data.append(values[0])
     difference.append(values[0])
-    csv.append(summed_data)
     for i in range(1, len(values)):
-        summed_data = []
         if values[i] - values[i - 1] < 0:
-            summed_data.append(values[i - 1] - values[i - 2])
             difference.append(values[i - 1] - values[i - 2])
         else:
-            summed_data.append(values[i] - values[i - 1])
             difference.append(values[i] - values[i - 1])
-        csv.append(summed_data)
     # dataframe = pd.DataFrame(csv, columns=['DateTime', 'value'])
     # dataframe.style.hide_index()
     # dataframe.to_csv("Demand Data/Running Data.csv", index=False)
@@ -138,19 +130,21 @@ def test_demonstration():
     predictions = []
     acc = []
     CSV = "BuildingData2018/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv"
-    true_data = [154, 151, 157, 147]
+    true_data = [112, 109, 109]
     j = 0
     demand_data = pd.read_csv(CSV)
     dates = []
-    for i in range(len(demand_data) - 4, len(demand_data)):
+    lol = int(len(demand_data)/10)
+    for i in range(lol - 4, lol):
         new_demand_data = demand_data.head(n=i)
         current_predictions = machine_learning(new_demand_data)
         predictions.append(current_predictions)
-        print(true_data[j])
-        update = accuracy(true_data[j], current_predictions[1])
-        print(update)
-        j += 1
-        acc.append(update)
+        if i != lol - 4:
+            print(true_data[j])
+            update = accuracy(true_data[j], current_predictions[1])
+            print(update)
+            j += 1
+            acc.append(update)
     print("Predictions")
     print(predictions)
     print("Accuracy after each prediction")
@@ -159,3 +153,4 @@ def test_demonstration():
 # print(tada)
 # update = accuracy(100, "Demand Data/Running Data.csv")
 test_demonstration()
+
