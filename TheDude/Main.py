@@ -22,11 +22,12 @@ if __name__ == "__main__":
     # Send list of all clusters in dictionary form[{Cluster: Name, Priority: x, CSV: file}, ...]
     FSM.init(clusters)
 
-    time15 = time.time() - TIME_HORIZON * 60 + 1
+    time_horizon = time.time() - TIME_HORIZON * 60 + 1
     runs = 0
     while True:
         FSM.reset()
-        if (time.time() - time15 >= (TIME_HORIZON * 60)): #NOTE: This assumes that everything below will run in <15 min.
+        if (time.time() - time_horizon >= (TIME_HORIZON * 60)):
+            time_horizon = time.time()
             ML.train() # always train no matter what
             if BLACKOUT: 
                 BLACKOUT = FSM.fsm(runs) #returns whether blackout is continuing or not
