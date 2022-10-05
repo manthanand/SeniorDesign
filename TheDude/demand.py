@@ -109,13 +109,9 @@ def generate_demand_predictions(CSV):
     path = CSV
     df = read_csv(path, header=0, index_col=0, squeeze=True)
     # retrieve the values
-    dates = []
-    with open(CSV, 'r') as f:
-        csv_reader = csv.reader(f)
-        for row in csv_reader:
-            if row[0] != 'human_timestamp':
-                dates.append(row[0])
-    return machine_learning(df, dates)
+    new_demand_data = df.head(n=250)
+    current_predictions = machine_learning(new_demand_data)
+    return current_predictions
 
 def accuracy(last_15min_predication, index):
     try:
@@ -152,5 +148,5 @@ def test_demonstration():
 # tada = generate_demand_predictions("Demand Data/Annex West Active Power_August.csv")
 # print(tada)
 # update = accuracy(100, "Demand Data/Running Data.csv")
-test_demonstration()
+# test_demonstration()
 

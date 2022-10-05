@@ -47,8 +47,9 @@ def train():
     # Write Demand data to dataframe
     for i, r in clusters.iterrows():
         print(glob.glob(settings.demandfp + r["Cluster"] + "*"))
-        output.loc[len(output.index)] = ([r["Cluster"]] + [r["Priority"]] + demand.generate_demand_predictions(
-            glob.glob(settings.demandfp + r["Cluster"] + "*")[0]) + ["", ""])
+        file = (glob.glob(settings.demandfp + r["Cluster"] + "*")[0])
+        predictions = demand.generate_demand_predictions(file)
+        output.loc[len(output.index)] = ([r["Cluster"]] + [r["Priority"]] + predictions + ["", ""])
     output.to_csv(settings.outputfp, encoding='utf-8', index=False)  # Write Dataframe to csv
 
 # train()
