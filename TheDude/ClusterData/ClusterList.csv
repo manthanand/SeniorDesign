@@ -1,7 +1,7 @@
 Cluster,Priority,CSV
-Annex East Active Power_August,1,Annex East Active Power_August.csv
-Harris East West Active Power_August,1,Harris East West Active Power_August.csv
-Annex West Active Power_August,2,Annex West Active Power_August.csv
-Harris East West Active Power_August,2,Harris East West Active Power_August.csv
-Annex West Active Power_August,3,Annex West Active Power_August.csv
-Harris East West Active Power_August,3,Harris East West Active Power_August.csv
+Annex East Active Power_August,Laboratory,Annex East Active Power_August.csv
+Harris East West Active Power_August,Laboratory,Harris East West Active Power_August.csv
+Annex West Active Power_August,Service,Annex West Active Power_August.csv
+Harris East West Active Power_August,Service,Harris East West Active Power_August.csv
+Annex West Active Power_August,Office,Annex West Active Power_August.csv
+Harris East West Active Power_August,Office,Harris East West Active Power_August.csv
