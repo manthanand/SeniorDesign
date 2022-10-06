@@ -9,6 +9,19 @@ DEMAND_HORIZON_LENGTH = 5
 CSV_ENTRY_LENGTH = 15
 BATTERY_CAPACITY = 60000
 BATTERY_USE_RATIO = .7
+CLASSIFICATIONS = {
+    "Classroom": 2,
+    "Computer": 2,
+    "Exhibition": 3,
+    "Food Service": 1,
+    "Health Care": 1,
+    "Laboratory": 1,
+    "Library": 3,
+    "Lodging": 2,
+    "Office": 3,
+    "Public Assembly": 3,
+    "Service": 2
+}
 
 # Time each cluster will be on (highest to lowest) 0 indicates always powered
 TIME = [0,4,2]
@@ -44,7 +57,7 @@ class cluster:
 
 def init(clusters):
     for item in clusters: 
-        row_cluster = cluster(name_item=item.get('Cluster'),priority_item=item.get('Priority'))
+        row_cluster = cluster(name_item=item.get('Cluster'),priority_item=CLASSIFICATIONS[item.get('Priority')])
         TOTAL_CLUSTERS.append(row_cluster)
         if row_cluster.priority == 1: P1.append(row_cluster)
         elif row_cluster.priority == 2: P2.append(row_cluster)

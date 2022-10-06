@@ -22,7 +22,7 @@ NUMBER_ITERATIONS = 10
 
 
 def time_test():
-    BLACKOUT = 0
+    BLACKOUT = 1
     # Read from Building CSV and initialize all modules with cluster priorities
     clusters = pd.read_csv(settings.clusterfp).to_dict('records')
     # Send list of all clusters in dictionary form[{Cluster: Name, Priority: x, CSV: file}, ...]
@@ -31,13 +31,13 @@ def time_test():
         time_horizon = time.time()
         ML.train(i)  # always train no matter what
         if BLACKOUT:
-            BLACKOUT = FSM.fsm()  # returns whether blackout is continuing or not
+            FSM.fsm()  # returns whether blackout is continuing or not
             with open(settings.powerreqscsv, "r", encoding="utf-8", errors="ignore") as data:
                 final_line = data.readlines()[-1]
                 final_line = final_line.split(',')
                 BLACKOUT = 0
                 for item in range(1, len(final_line) - 1):
-                    if (final_line[item] == '0.0'):
+                    if (final_line[item] == '0'):
                         BLACKOUT = 1
                         break
         else:
