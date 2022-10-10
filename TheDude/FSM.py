@@ -196,6 +196,7 @@ def fsm():
                 if remaining_supply_horizon[0] < 0: remaining_supply_horizon[0] = 0
                 powered_clusters.append(item)
         cluster_writer(powered_clusters, remaining_supply_horizon[0], run_count)
+        run_count += 1
         return 1
     
     
