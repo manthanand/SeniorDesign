@@ -12,7 +12,9 @@ from keras.layers import LSTM
 import csv
 import jinja2
 
-amount_of_data_analyzed = 300
+DATA_POINTS = 300
+NUM_EPOCHS = 100
+cluster_images = []
 
 # split a univariate sequence into samples
 def split_sequence(sequence, n_steps):
@@ -69,17 +71,13 @@ def machine_learning(df):
     # evaluate the model
     mse, mae = model.evaluate(X_test, y_test, verbose=0)
     # print('MSE: %.3f, RMSE: %.3f, MAE: %.3f' % (mse, sqrt(mse), mae))
-    # make a prediction for 15, 30, 45, and 60 minutes
+    # make predictions for all time horizons
     current = values[len(values) - 1]
-    yhat_15min = compute_prediction(model, values[-5:], n_steps)
-    values.append(yhat_15min[0][0])
-    yhat_30min = compute_prediction(model, values[-5:], n_steps)
-    values.append(yhat_30min[0][0])
-    yhat_45min = compute_prediction(model, values[-5:], n_steps)
-    yhat_45min = yhat_45min.tolist()
-    values.append(yhat_45min[0][0])
-    yhat_60min = compute_prediction(model, values[-5:], n_steps)
-    return [current, yhat_15min[0][0], yhat_30min[0][0], yhat_45min[0][0], yhat_60min[0][0]]
+    th = []
+    for i in range(settings.DEMAND_TIME_HORIZONS):
+        th.append(compute_prediction(model, values[-5:], n_steps))
+        values.append(th[i][0][0])
+    return [current] + [th[i][0][0] for i in range(settings.DEMAND_TIME_HORIZONS)]
 
 
 # Commented out since we won't know the true value when we make our predication

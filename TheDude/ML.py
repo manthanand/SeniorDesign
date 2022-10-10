@@ -19,9 +19,10 @@ clusters = pd.read_csv(settings.clusterfp)
 # It uses input data from the folder InputData
 def train(start):
     # This reads all data in the csv and clears all existing data in the dataframe (for rewriting)
-    output = pd.DataFrame(columns=["Clusters", "Priority", "Current Demand",
-                                   "15 Min Demand", "30 Min Demand", "45 Min Demand", "60 Min Demand",
-                                   "Current Supply", "60 Min Supply"])
+    output = pd.DataFrame(columns=["Clusters", "Priority", "Current Demand"] + 
+                                  [f"Horizon {i + 1} demand" for i in range(settings.DEMAND_TIME_HORIZONS)] +
+                                  ["Current Supply"] + 
+                                  [f"Horizon {i + 1} supply" for i in range(settings.SUPPLY_TIME_HORIZONS)])
     # WAIT UNTIL NEW DATA IS AVAILABLE IN SUPPLY PORTAL
 
     # THIS WILL COLLECT WEATHER DATA AND STORE IT IN "WeatherCSV.csv"
@@ -43,13 +44,14 @@ def train(start):
 
     # Write Supply data to dataframe
     output.loc[len(output.index)] = (
-                ["Supply", "", "", "", "", "", ""] + supply_ml.generate_supply_predictions(weather_df))
+                ["Supply", "", "",] + 
+                ["" for i in range(settings.DEMAND_TIME_HORIZONS)] + 
+                supply_ml.generate_supply_predictions(weather_df))
     # Write Demand data to dataframe
     for i, r in clusters.iterrows():
-        print(glob.glob(settings.demandfp + r["Cluster"] + "*"))
         file = (glob.glob(settings.demandfp + r["Cluster"] + "*")[0])
         predictions = demand.generate_demand_predictions(file, start)
-        output.loc[len(output.index)] = ([r["Cluster"]] + [r["Priority"]] + predictions + ["", ""])
+        output.loc[len(output.index)] = ([r["Cluster"]] + [r["Priority"]] + predictions + [""] + ["" for i in range(settings.SUPPLY_TIME_HORIZONS)])
     output.to_csv(settings.outputfp, encoding='utf-8', index=False)  # Write Dataframe to csv
 
 # train()
