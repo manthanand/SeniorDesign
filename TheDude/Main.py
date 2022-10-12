@@ -40,17 +40,17 @@ def time_test():
         else:
             FSM.reset()
 
-def waitinput():
+def wait_input():
     if not BLACKOUT:
         if input() == BLACKOUT_STR: BLACKOUT == 1
 
 if __name__ == "__main__":
-    time_test()
     # Read from Building CSV and initialize all modules with cluster priorities
     clusters = pd.read_csv(settings.clusterfp).to_dict('records')
     # Send list of all clusters in dictionary form[{Cluster: Name, Priority: x, CSV: file}, ...]
     FSM.init(clusters)
-
+    ML.init()
+    
     time_horizon = time.time() - TIME_HORIZON * 60 + 1
     runs = 0
     while True:

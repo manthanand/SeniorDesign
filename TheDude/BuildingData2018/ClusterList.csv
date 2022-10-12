@@ -1,4 +1,4 @@
-tag,building_id,use_type,gross_square_footage,Priority
+Cluster,building_id,use_type,gross_square_footage,Priority
 PHR_E_TBU_CD,465,Laboratory,132425.0,1
 JES_E_TBU_CD,598,Food Service,179357.0,1
 BEL_E_TBU_CD,418,Public Assembly,404131.0,3

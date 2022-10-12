@@ -8,6 +8,7 @@ import os
 import demand
 import supply_ml
 import glob
+from pandas import read_csv
 
 # This is a dictionary where the key is the cluster name and the value is the csv that
 # contains the data associated with that key
@@ -16,10 +17,12 @@ cluster_models = {}
 def init():
     for i, r in clusters.iterrows():
         cluster_models[r["Cluster"]] = demand.generate_model(read_csv((glob.glob(settings.demandfp + r["Cluster"] + "*")[0]), header=0, index_col=0, squeeze=True))
-    
+        print(r["Cluster"])
+        print(cluster_models[r["Cluster"]])
+
 # This function collects the current supply and demand for all clusters and stores them in "OutputData.csv" every 15 minutes
 # It uses input data from the folder InputData
-def train(start):
+def train():
     # This reads all data in the csv and clears all existing data in the dataframe (for rewriting)
     output = pd.DataFrame(columns=["Clusters", "Priority", "Current Demand"] + 
                                   [f"Horizon {i + 1} demand" for i in range(settings.DEMAND_TIME_HORIZONS)] +
