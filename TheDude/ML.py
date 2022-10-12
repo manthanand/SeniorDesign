@@ -17,8 +17,6 @@ cluster_models = {}
 def init():
     for i, r in clusters.iterrows():
         cluster_models[r["Cluster"]] = demand.generate_model(read_csv((glob.glob(settings.demandfp + r["Cluster"] + "*")[0]), header=0, index_col=0, squeeze=True))
-        print(r["Cluster"])
-        print(cluster_models[r["Cluster"]])
 
 # This function collects the current supply and demand for all clusters and stores them in "OutputData.csv" every 15 minutes
 # It uses input data from the folder InputData
@@ -54,7 +52,7 @@ def train():
                 supply_ml.generate_supply_predictions(weather_df))
     # Write Demand data to dataframe
     for i, r in clusters.iterrows():
-        (cluster_models[r["Cluster"]], predictions) = demand.generate_demand_predictions(cluster_models[r["Cluster"]], 
+        (cluster_models[r["Cluster"]], predictions) = demand.compute_prediction(cluster_models[r["Cluster"]], 
                 read_csv((glob.glob(settings.demandfp + r["Cluster"] + "*")[0]), header=0, index_col=0, squeeze=True),
                 True)
         output.loc[len(output.index)] = ([r["Cluster"]] + [r["Priority"]] + predictions + [""] + ["" for i in range(settings.SUPPLY_TIME_HORIZONS)])
