@@ -1,6 +1,6 @@
 import os.path
 
-demandfp = "ClusterData/"
+demandfp = "BuildingData2020/"
 clusterfp = os.path.join(demandfp, "ClusterList.csv")
 supplyfp = "SupplyData.csv"
 outputfp = "OutputData.csv"

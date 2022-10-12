@@ -14,6 +14,7 @@ import jinja2
 
 DATA_POINTS = 300
 NUM_EPOCHS = 100
+N_STEPS = 5
 cluster_images = []
 
 # split a univariate sequence into samples
@@ -40,16 +41,14 @@ def sum_rows (values):
             difference.append(values[i - 1] - values[i - 2])
         else:
             difference.append(values[i] - values[i - 1])
-    # dataframe = pd.DataFrame(csv, columns=['DateTime', 'value'])
-    # dataframe.style.hide_index()
-    # dataframe.to_csv("Demand Data/Running Data.csv", index=False)
     return difference
 
-
-def machine_learning(df):
+# This function generates a demand model for LSTM given a dataframe with column parameter value
+# that contains the data for amount of power used per time horizon. It assumes that the time
+# between each data point is constant and returns the model.
+def generate_model(df):
     values = df.loc[:,'value'].values
     values = (sum_rows(values))
-    n_steps = 5
     # split into samples
     X, y = split_sequence(values, n_steps)
     # reshape into [samples, timesteps, features]
@@ -57,10 +56,9 @@ def machine_learning(df):
     # split into train/test
     n_test = 12
     X_train, X_test, y_train, y_test = X[:-n_test], X[-n_test:], y[:-n_test], y[-n_test:]
-    # print(X_train.shape, X_test.shape, y_train.shape, y_test.shape)
     # define model
     model = Sequential()
-    model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(n_steps, 1)))
+    model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS, 1)))
     model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
     model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
     model.add(Dense(1))
@@ -70,37 +68,28 @@ def machine_learning(df):
     model.fit(X_train, y_train, epochs=100, batch_size=32, verbose=2, validation_data=(X_test, y_test))
     # evaluate the model
     mse, mae = model.evaluate(X_test, y_test, verbose=0)
-    # print('MSE: %.3f, RMSE: %.3f, MAE: %.3f' % (mse, sqrt(mse), mae))
-    # make predictions for all time horizons
+    return model
+
+# This function generates a prediction given an input model and dataframe that contains the power consumption
+# values in the value column. It will generate predictions for DEMAND_TIME_HORIZONS and update the model passed
+# in with the new data point in the dataframe. If you do not wish the update the original model, set 
+# update = False. This function returns a tuple (updatedmodel - Sequential() type, predictions - list type)
+def compute_prediction(model, df, update):
+    # NOTE: need to optimize this somehow
+    values = df.loc[:,'value'].values
+    values = (sum_rows(values))
     current = values[len(values) - 1]
     th = []
+    predict_model = model #this is copy that will be used to make predictions
     for i in range(settings.DEMAND_TIME_HORIZONS):
-        th.append(compute_prediction(model, values[-5:], n_steps))
+        row = asarray(values[-N_STEPS:]).reshape((1, N_STEPS, 1))
+        th.append(predict_model.predict(row))
         values.append(th[i][0][0])
-    return [current] + [th[i][0][0] for i in range(settings.DEMAND_TIME_HORIZONS)]
 
+    if update:
+        pass #TODO: NEED TO RESHAPE OLD MODEL WITH current and return it @neeley pate
 
-# Commented out since we won't know the true value when we make our predication
-# def compute_prediction(model, five_entries, actual_result, n_steps):
-# NOTE: need to optimize this somehow
-# row = asarray(
-# five_entries).reshape(
-# (1, n_steps, 1))
-# yhat = model.predict(row)
-# print('Predicted: %.3f' % (yhat))
-# accuracy = 100 - abs((actual_result - yhat) / yhat) * 100
-# print('Accuracy: ', accuracy)
-
-
-def compute_prediction(model, five_entries, n_steps):
-    # NOTE: need to optimize this somehow
-    row = asarray(
-        five_entries).reshape(
-        (1, n_steps, 1))
-    yhat = model.predict(row)
-    # print('Predicted: %.3f' % (yhat))
-    return yhat
-
+    return (model, [current] + [th[i][0][0] for i in range(settings.DEMAND_TIME_HORIZONS)])
 
 def generate_demand_predictions(CSV, start):
     # load the dataset

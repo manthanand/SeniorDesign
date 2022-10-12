@@ -8,13 +8,15 @@ import os
 import demand
 import supply_ml
 import glob
-import multiprocessing
 
 # This is a dictionary where the key is the cluster name and the value is the csv that
 # contains the data associated with that key
 clusters = pd.read_csv(settings.clusterfp)
-
-
+cluster_models = {}
+def init():
+    for i, r in clusters.iterrows():
+        cluster_models[r["Cluster"]] = demand.generate_model(read_csv((glob.glob(settings.demandfp + r["Cluster"] + "*")[0]), header=0, index_col=0, squeeze=True))
+    
 # This function collects the current supply and demand for all clusters and stores them in "OutputData.csv" every 15 minutes
 # It uses input data from the folder InputData
 def train(start):
@@ -49,8 +51,9 @@ def train(start):
                 supply_ml.generate_supply_predictions(weather_df))
     # Write Demand data to dataframe
     for i, r in clusters.iterrows():
-        file = (glob.glob(settings.demandfp + r["Cluster"] + "*")[0])
-        predictions = demand.generate_demand_predictions(file, start)
+        (cluster_models[r["Cluster"]], predictions) = demand.generate_demand_predictions(cluster_models[r["Cluster"]], 
+                read_csv((glob.glob(settings.demandfp + r["Cluster"] + "*")[0]), header=0, index_col=0, squeeze=True),
+                True)
         output.loc[len(output.index)] = ([r["Cluster"]] + [r["Priority"]] + predictions + [""] + ["" for i in range(settings.SUPPLY_TIME_HORIZONS)])
     output.to_csv(settings.outputfp, encoding='utf-8', index=False)  # Write Dataframe to csv
 

@@ -25,6 +25,7 @@ def time_test():
     BLACKOUT = 1
     # Read from Building CSV and initialize all modules with cluster priorities
     clusters = pd.read_csv(settings.clusterfp).to_dict('records')
+    ML.init()
     # Send list of all clusters in dictionary form[{Cluster: Name, Priority: x, CSV: file}, ...]
     FSM.init(clusters)
     for i in range(START_INDEX, NUMBER_ITERATIONS + START_INDEX):
@@ -53,10 +54,9 @@ if __name__ == "__main__":
     time_horizon = time.time() - TIME_HORIZON * 60 + 1
     runs = 0
     while True:
-        FSM.reset()
+        ML.train() # always train no matter what
         if (time.time() - time_horizon >= (TIME_HORIZON * 60)):
             time_horizon = time.time()
-            ML.train() # always train no matter what
             if BLACKOUT: 
                 BLACKOUT = FSM.fsm(runs) #returns whether blackout is continuing or not
                 runs += 1
