@@ -9,15 +9,11 @@ from serial.tools import list_ports
 import time
 import pandas as pd
 
-UPPERBOUND = 60.05
-LOWERBOUND = 59.95
-
-BLACKOUT = 1
+BLACKOUT_STR = "OWIEE"
+BLACKOUT = 0
 
 TIME_HORIZON = 15 #minutes
-
 START_INDEX = 100
-
 NUMBER_ITERATIONS = 10
 
 
@@ -44,6 +40,10 @@ def time_test():
         else:
             FSM.reset()
 
+def waitinput():
+    if not BLACKOUT:
+        if input() == BLACKOUT_STR: BLACKOUT == 1
+
 if __name__ == "__main__":
     time_test()
     # Read from Building CSV and initialize all modules with cluster priorities
@@ -54,8 +54,8 @@ if __name__ == "__main__":
     time_horizon = time.time() - TIME_HORIZON * 60 + 1
     runs = 0
     while True:
-        ML.train() # always train no matter what
-        if (time.time() - time_horizon >= (TIME_HORIZON * 60)):
+        if (time.time() - time_horizon >= (TIME_HORIZON * 60)):  
+            ML.train() # always train no matter what
             time_horizon = time.time()
             if BLACKOUT: 
                 BLACKOUT = FSM.fsm(runs) #returns whether blackout is continuing or not
@@ -63,9 +63,8 @@ if __name__ == "__main__":
                 with open(settings.powerreqscsv, "r", encoding="utf-8", errors="ignore") as data:
                     final_line = data.readlines()[-1]
                     final_line = final_line.split(',')
-                    BLACKOUT = 0
+                    isblackout = True
                     for item in range(1, len(final_line) - 1):
-                        if(final_line[item] == '0.0'):
-                            BLACKOUT = 1
-                            break
+                        isblackout = isblackout and final_line[item]
+                    BLACKOUT = not isblackout #NAND function
             else: FSM.reset()

@@ -22,7 +22,7 @@ def split_sequence(sequence, n_steps):
     X, y = list(), list()
     for i in range(len(sequence)):
         # find the end of this pattern
-        end_ix = i + n_steps
+        end_ix = i + N_STEPS
         # check if we are beyond the sequence
         if end_ix > len(sequence) - 1:
             break
@@ -43,19 +43,23 @@ def sum_rows (values):
             difference.append(values[i] - values[i - 1])
     return difference
 
-# This function generates a demand model for LSTM given a dataframe with column parameter value
-# that contains the data for amount of power used per time horizon. It assumes that the time
-# between each data point is constant and returns the model.
-def generate_model(df):
+def fit_model(model, df):
     values = df.loc[:,'value'].values
     values = (sum_rows(values))
     # split into samples
-    X, y = split_sequence(values, n_steps)
+    X, y = split_sequence(values, N_STEPS)
     # reshape into [samples, timesteps, features]
     X = X.reshape((X.shape[0], X.shape[1], 1))
     # split into train/test
     n_test = 12
     X_train, X_test, y_train, y_test = X[:-n_test], X[-n_test:], y[:-n_test], y[-n_test:]
+    # fit the model
+    return model.fit(X_train, y_train, epochs=NUM_EPOCHS, batch_size=32, verbose=2, validation_data=(X_test, y_test))
+
+# This function generates a demand model for LSTM given a dataframe with column parameter value
+# that contains the data for amount of power used per time horizon. It assumes that the time
+# between each data point is constant and returns the model.
+def generate_model(df):
     # define model
     model = Sequential()
     model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS, 1)))
@@ -64,8 +68,7 @@ def generate_model(df):
     model.add(Dense(1))
     # compile the model
     model.compile(optimizer='adam', loss='mse', metrics=['mae'])
-    # fit the model
-    model.fit(X_train, y_train, epochs=100, batch_size=32, verbose=2, validation_data=(X_test, y_test))
+    model = fit_model(model, df)
     # evaluate the model
     mse, mae = model.evaluate(X_test, y_test, verbose=0)
     return model
@@ -87,16 +90,16 @@ def compute_prediction(model, df, update):
         values.append(th[i][0][0])
 
     if update:
-        pass #TODO: NEED TO RESHAPE OLD MODEL WITH current and return it @neeley pate
+        model = fit_model(model,df)
 
     return (model, [current] + [th[i][0][0] for i in range(settings.DEMAND_TIME_HORIZONS)])
 
-def generate_demand_predictions(CSV, start):
+def generate_demand_predictions(CSV):
     # load the dataset
     path = CSV
     df = read_csv(path, header=0, index_col=0, squeeze=True)
     # retrieve the values
-    new_demand_data = df.head(n=start)
+    new_demand_data = df.head(n=DATA_POINTS)
     current_predictions = machine_learning(new_demand_data)
     return current_predictions
 
