@@ -123,7 +123,7 @@ def test_demonstration():
     lol = int(len(demand_data)/10)
     for i in range(lol - 4, lol):
         new_demand_data = demand_data.head(n=i)
-        current_predictions = machine_learning(new_demand_data)
+        current_predictions = generate_model(new_demand_data)
         predictions.append(current_predictions)
         if i != lol - 4:
             print(true_data[j])
