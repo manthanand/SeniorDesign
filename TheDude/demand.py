@@ -54,7 +54,8 @@ def fit_model(model, df):
     n_test = 12
     X_train, X_test, y_train, y_test = X[:-n_test], X[-n_test:], y[:-n_test], y[-n_test:]
     # fit the model
-    return model.fit(X_train, y_train, epochs=NUM_EPOCHS, batch_size=32, verbose=2, validation_data=(X_test, y_test))
+    model.fit(X_train, y_train, epochs=NUM_EPOCHS, batch_size=32, verbose=2, validation_data=(X_test, y_test))
+    return model
 
 # This function generates a demand model for LSTM given a dataframe with column parameter value
 # that contains the data for amount of power used per time horizon. It assumes that the time
@@ -69,8 +70,7 @@ def generate_model(df):
     # compile the model
     model.compile(optimizer='adam', loss='mse', metrics=['mae'])
     model = fit_model(model, df)
-    # evaluate the model
-    mse, mae = model.evaluate(X_test, y_test, verbose=0)
+
     return model
 
 # This function generates a prediction given an input model and dataframe that contains the power consumption
