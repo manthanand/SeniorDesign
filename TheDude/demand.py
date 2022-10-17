@@ -1,7 +1,7 @@
 import pandas as pd
 from datetime import datetime
 import math
-#import tensorflow
+import os
 from numpy import concatenate
 from numpy import sqrt
 from numpy import asarray
@@ -20,7 +20,7 @@ NUM_EPOCHS = 100
 N_STEPS = 5
 NEW_DATA_AMOUNT = 168
 VERBOSE = 0
-PREDICTION_THRESHOLD = .02
+PREDICTION_THRESHOLD = .04 # Percentage
 cluster_predictions = {}
 
 #waits for retraining
@@ -34,7 +34,7 @@ def wait_amount():
 
 # split a univariate sequence into samples
 def split_sequence(sequence):
-    X, y = list(), list()
+    x, y = list(), list()
     for i in range(len(sequence)):
         # find the end of this pattern
         end_ix = i + N_STEPS
@@ -43,9 +43,9 @@ def split_sequence(sequence):
             break
         # gather input and output parts of the pattern
         seq_x, seq_y = sequence[i:end_ix], sequence[end_ix]
-        X.append(seq_x)
+        x.append(seq_x)
         y.append(seq_y)
-    return asarray(X), asarray(y)
+    return asarray(x), asarray(y)
 
 
 def sum_rows (values):
@@ -66,54 +66,52 @@ def fit_model(model, df, points, model_location):
     values = (sum_rows(values))
     values[0] = 0
     # split into samples
-    X, y = split_sequence(values, N_STEPS)
+    x, y = split_sequence(values)
     # reshape into [samples, timesteps, features]
-    X = X.reshape((X.shape[0], X.shape[1], 1))
+    x = x.reshape((x.shape[0], x.shape[1], 1))
     # split into train/test
     n_test = 12
-    X_train, X_test, y_train, y_test = X[:-n_test], X[-n_test:], y[:-n_test], y[-n_test:]
+    x_train, x_test, y_train, y_test = x[:-n_test], x[-n_test:], y[:-n_test], y[-n_test:]
     # fit the model
-    little_x = model.fit(X_train, y_train, epochs=NUM_EPOCHS, batch_size=32, verbose=2, validation_data=(X_test, y_test))
+    little_x = model.fit(x_train, y_train, epochs=NUM_EPOCHS, batch_size=32, verbose=VERBOSE, validation_data=(x_test, y_test))
     little_x.model.save(model_location)
-    return X_test, y_test, little_x
+    return x_test, y_test, little_x
 
 # This function generates a demand model for LSTM given a dataframe with column parameter value
 # that contains the data for amount of power used per time horizon. It assumes that the time
 # between each data point is constant and returns the model.
 def generate_model(df, model_location):
     # define model
-    model = Sequential()
-    model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS, 1)))
-    model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
-    model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
-    model.add(Dense(1))
-    # compile the model
-    model.compile(optimizer='adam', loss='mse', metrics=['mae'])
-    X_test, y_test, model = fit_model(model, df, len(df))
-    model.model.save(model_location)
-    model = keras.models.load_model(model_location)
-    # return model
+    cluster_predictions[model_location] = 1 #initialize all models to 100% accuracy
+    if (not os.path.exists(model_location)):
+        model = Sequential()
+        model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS, 1)))
+        model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
+        model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
+        model.add(Dense(1))
+        # compile the model
+        model.compile(optimizer='adam', loss='mse', metrics=['mae'])
+        x_test, y_test, model = fit_model(model, df, len(df), model_location)
 
 # This function generates a prediction given an input model and dataframe that contains the power consumption
 # values in the value column. It will generate predictions for DEMAND_TIME_HORIZONS and update the model passed
-# in with the new data point in the dataframe. If you do not wish the update the original model, set 
-# update = False. This function returns a tuple (updatedmodel - Sequential() type, predictions - list type)
-def compute_prediction(model, df, update, points):
-    # NOTE: need to optimize this somehow
+# in with the new data point in the dataframe.
+def compute_prediction(model_location, df):
     values = df.loc[:,'value'].values
     values = (sum_rows(values))
     current = values[len(values) - 1]
     th = []
-    predict_model = keras.models.load_model(model)#this is copy that will be used to make predictions
+    predict_model = keras.models.load_model(model_location)#this is copy that will be used to make predictions
     for i in range(settings.DEMAND_TIME_HORIZONS):
         row = asarray(values[-N_STEPS:]).reshape((1, N_STEPS, 1))
         th.append(predict_model.model.predict(row))
         values.append(th[i][0][0])
     update = (wait_amount() == NEW_DATA_AMOUNT - 1)
-    if update or ():
-        model = fit_model(predict_model,df, NEW_DATA_AMOUNT)
+    # Update if batch size reached or predictions become inaccurate
+    if update or (abs(cluster_predictions[model_location] - th[0][0][0]) < PREDICTION_THRESHOLD):
+        fit_model(predict_model,df, NEW_DATA_AMOUNT)
     
-    return (model, [current] + [th[i][0][0] for i in range(settings.DEMAND_TIME_HORIZONS)])
+    return ([current] + [th[i][0][0] for i in range(settings.DEMAND_TIME_HORIZONS)])
 
 #also look into retraining on whole data set every x amount of days
 

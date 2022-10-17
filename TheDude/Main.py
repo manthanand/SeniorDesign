@@ -42,21 +42,24 @@ def time_test():
             FSM.reset()
 
 def wait_input():
+    global BLACKOUT
     while True:
         if not BLACKOUT:
             print("If entering blackout, type in " + BLACKOUT_STR)
-            if input() == BLACKOUT_STR: BLACKOUT == 1
+            if input() == BLACKOUT_STR: BLACKOUT = 1
 
 if __name__ == "__main__":
-    time_test()
+    # time_test()
     # Read from Building CSV and initialize all modules with cluster priorities
     clusters = pd.read_csv(settings.clusterfp).to_dict('records')
+
+    #Start thread to wait for user input for blackout
+    t1 = threading.Thread(target=wait_input)
+    t1.start()
+
     # Send list of all clusters in dictionary form[{Cluster: Name, Priority: x, CSV: file}, ...]
     FSM.init(clusters)
     ML.init()
-
-    t1 = threading.Thread(target=wait_input)
-    t1.start()
     
     time_horizon = time.time() - TIME_HORIZON * 60 + 1
     

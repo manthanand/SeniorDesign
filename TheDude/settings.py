@@ -1,7 +1,8 @@
 import os.path
 
 demandfp = "BuildingData2020/"
-clusterfp = os.path.join(demandfp, "ClusterList.csv")
+modelfp = "BuildingData2020/Models/"
+clusterfp = "BuildingData2020/ClusterList.csv"
 supplyfp = "SupplyData.csv"
 outputfp = "OutputData.csv"
 powerreqscsv = 'PowerRequirements.csv'
