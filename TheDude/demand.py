@@ -16,13 +16,12 @@ import jinja2
 import settings
 import time
 
-
-DATA_POINTS = 300
-VAR = 300
 NUM_EPOCHS = 100
 N_STEPS = 5
 NEW_DATA_AMOUNT = 168
-cluster_images = []
+VERBOSE = 0
+PREDICTION_THRESHOLD = .02
+cluster_predictions = {}
 
 #waits for retraining
 def wait_amount():
@@ -59,6 +58,8 @@ def sum_rows (values):
             difference.append(values[i] - values[i - 1])
     return difference
 
+# This function fits the 'model' using an input pandas 'df' and the number of 'points' to fit on.
+# It also stores the fitted model in the filepath provided by 'model_location'
 def fit_model(model, df, points, model_location):
     df = df.tail(n=points)
     values = df.loc[:,'value'].values
@@ -93,7 +94,6 @@ def generate_model(df, model_location):
     model = keras.models.load_model(model_location)
     # return model
 
-
 # This function generates a prediction given an input model and dataframe that contains the power consumption
 # values in the value column. It will generate predictions for DEMAND_TIME_HORIZONS and update the model passed
 # in with the new data point in the dataframe. If you do not wish the update the original model, set 
@@ -107,14 +107,12 @@ def compute_prediction(model, df, update, points):
     predict_model = keras.models.load_model(model)#this is copy that will be used to make predictions
     for i in range(settings.DEMAND_TIME_HORIZONS):
         row = asarray(values[-N_STEPS:]).reshape((1, N_STEPS, 1))
-        th.append(predict_model.predict(row))
+        th.append(predict_model.model.predict(row))
         values.append(th[i][0][0])
-    update = (wait_amount == NEW_DATA_AMOUNT)
-    if update:
-        model = fit_model(predict_model,df, points)
-        # df = df.
-        # generate_model(df)
-        # return machine_learning(df)
+    update = (wait_amount() == NEW_DATA_AMOUNT - 1)
+    if update or ():
+        model = fit_model(predict_model,df, NEW_DATA_AMOUNT)
+    
     return (model, [current] + [th[i][0][0] for i in range(settings.DEMAND_TIME_HORIZONS)])
 
 #also look into retraining on whole data set every x amount of days

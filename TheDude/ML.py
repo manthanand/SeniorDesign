@@ -14,6 +14,7 @@ from pandas import read_csv
 # contains the data associated with that key
 clusters = pd.read_csv(settings.clusterfp)
 cluster_models = {}
+
 def init():
     for i, r in clusters.iterrows():
         cluster_models[r["Cluster"]] = demand.generate_model(read_csv((glob.glob(settings.demandfp + r["Cluster"] + "*")[0]), header=0, index_col=0, squeeze=True))

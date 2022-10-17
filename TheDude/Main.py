@@ -8,6 +8,7 @@ import serial
 from serial.tools import list_ports
 import time
 import pandas as pd
+import threading
 
 BLACKOUT_STR = "OWIEE"
 BLACKOUT = 0
@@ -41,8 +42,10 @@ def time_test():
             FSM.reset()
 
 def wait_input():
-    if not BLACKOUT:
-        if input() == BLACKOUT_STR: BLACKOUT == 1
+    while True:
+        if not BLACKOUT:
+            print("If entering blackout, type in " + BLACKOUT_STR)
+            if input() == BLACKOUT_STR: BLACKOUT == 1
 
 if __name__ == "__main__":
     time_test()
@@ -51,15 +54,18 @@ if __name__ == "__main__":
     # Send list of all clusters in dictionary form[{Cluster: Name, Priority: x, CSV: file}, ...]
     FSM.init(clusters)
     ML.init()
+
+    t1 = threading.Thread(target=wait_input)
+    t1.start()
     
     time_horizon = time.time() - TIME_HORIZON * 60 + 1
-    runs = 0
+    
     while True:
         if (time.time() - time_horizon >= (TIME_HORIZON * 60)):  
             ML.train() # always train no matter what
             time_horizon = time.time()
             if BLACKOUT: 
-                BLACKOUT = FSM.fsm(runs) #returns whether blackout is continuing or not
+                BLACKOUT = FSM.fsm() #returns whether blackout is continuing or not
                 runs += 1
                 with open(settings.powerreqscsv, "r", encoding="utf-8", errors="ignore") as data:
                     final_line = data.readlines()[-1]
