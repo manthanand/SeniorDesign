@@ -16,21 +16,22 @@ import jinja2
 import settings
 import time
 
+NUM_DATA_POINTS = "MAX" # MAX if using all data, integer if using some data
 NUM_EPOCHS = 100
 N_STEPS = 5
 NEW_DATA_AMOUNT = 168
-VERBOSE = 0
+VERBOSE = 2
 PREDICTION_THRESHOLD = .04 # Percentage
+# Dictionary key is cluster model path, value is list with [prediction accuracy, counter]
 cluster_predictions = {}
 
-#waits for retraining
-def wait_amount():
-    current = 0
-    if current == NEW_DATA_AMOUNT:
-        current = 0
-    else:
-        current += 1
-    yield current
+# Should be used by layer above to increment amount of time horizons that ML has predicted
+# rst set to true in order to reset after new data has been added into model
+# inc set to true to increment counter, false to just return value of counter
+def wait_amount(model_location, rst, inc):
+    if rst: cluster_predictions[model_location][1] = 0 #Set counter to 0
+    elif inc: cluster_predictions[model_location][1] += 1
+    return cluster_predictions[model_location][1]
 
 # split a univariate sequence into samples
 def split_sequence(sequence):
@@ -59,6 +60,7 @@ def sum_rows (values):
     return difference
 
 # This function fits the 'model' using an input pandas 'df' and the number of 'points' to fit on.
+# 'points' is last number of points collected
 # It also stores the fitted model in the filepath provided by 'model_location'
 def fit_model(model, df, points, model_location):
     df = df.tail(n=points)
@@ -82,7 +84,7 @@ def fit_model(model, df, points, model_location):
 # between each data point is constant and returns the model.
 def generate_model(df, model_location):
     # define model
-    cluster_predictions[model_location] = 1 #initialize all models to 100% accuracy
+    cluster_predictions[model_location] = [1, 0] #initialize all models [accuracy, counter]
     if (not os.path.exists(model_location)):
         model = Sequential()
         model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS, 1)))
@@ -91,7 +93,7 @@ def generate_model(df, model_location):
         model.add(Dense(1))
         # compile the model
         model.compile(optimizer='adam', loss='mse', metrics=['mae'])
-        x_test, y_test, model = fit_model(model, df, len(df), model_location)
+        x_test, y_test, model = fit_model(model, df, len(df) if (NUM_DATA_POINTS == "MAX") else NUM_DATA_POINTS, model_location)
 
 # This function generates a prediction given an input model and dataframe that contains the power consumption
 # values in the value column. It will generate predictions for DEMAND_TIME_HORIZONS and update the model passed
@@ -106,11 +108,12 @@ def compute_prediction(model_location, df):
         row = asarray(values[-N_STEPS:]).reshape((1, N_STEPS, 1))
         th.append(predict_model.model.predict(row))
         values.append(th[i][0][0])
-    update = (wait_amount() == NEW_DATA_AMOUNT - 1)
+    current_amount = wait_amount(False, True)
     # Update if batch size reached or predictions become inaccurate
     if update or (abs(cluster_predictions[model_location] - th[0][0][0]) < PREDICTION_THRESHOLD):
-        fit_model(predict_model,df, NEW_DATA_AMOUNT)
-    
+        fit_model(predict_model,df, current_amount)
+        wait_amount(True, False) #reset counter if 
+
     return ([current] + [th[i][0][0] for i in range(settings.DEMAND_TIME_HORIZONS)])
 
 #also look into retraining on whole data set every x amount of days
