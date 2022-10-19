@@ -21,7 +21,8 @@ NUM_EPOCHS = 100
 N_STEPS = 5
 NEW_DATA_AMOUNT = 168
 VERBOSE = 2
-PREDICTION_THRESHOLD = .04 # Percentage
+PREDICTION_THRESHOLD = .96 # Percentage
+DEMAND_UNINIT = 42069
 # Dictionary key is cluster model path, value is list with [prediction accuracy, counter]
 cluster_predictions = {}
 
@@ -84,7 +85,7 @@ def fit_model(model, df, points, model_location):
 # between each data point is constant and returns the model.
 def generate_model(df, model_location):
     # define model
-    cluster_predictions[model_location] = [1, 0] #initialize all models [accuracy, counter]
+    cluster_predictions[model_location] = [DEMAND_UNINIT, 0] #initialize all models [accuracy, counter]
     if (not os.path.exists(model_location)):
         model = Sequential()
         model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS, 1)))
@@ -108,9 +109,12 @@ def compute_prediction(model_location, df):
         row = asarray(values[-N_STEPS:]).reshape((1, N_STEPS, 1))
         th.append(predict_model.model.predict(row))
         values.append(th[i][0][0])
+    accuracy = 1 #initialize accuracy to 1 in case 
+    if (cluster_predictions[model_location][0] == DEMAND_UNINIT): cluster_predictions[model_location][0] = th[0][0][0]
+    else: accuracy = abs((cluster_predictions[model_location][0] - current) / current)
     current_amount = wait_amount(False, True)
     # Update if batch size reached or predictions become inaccurate
-    if update or (abs(cluster_predictions[model_location] - th[0][0][0]) < PREDICTION_THRESHOLD):
+    if (cluster_predictions[model_location][1] == (NEW_DATA_AMOUNT - 1)) or (accuracy < PREDICTION_THRESHOLD):
         fit_model(predict_model,df, current_amount)
         wait_amount(True, False) #reset counter if 
 
