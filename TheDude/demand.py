@@ -9,6 +9,7 @@ from pandas import read_csv
 from keras import Sequential
 from keras.layers import Dense
 from keras.layers import LSTM
+from keras.layers import BatchNormalization
 import keras
 import matplotlib.pyplot as plt
 import csv
@@ -18,14 +19,16 @@ import time
 
 NUM_DATA_POINTS = "MAX" # MAX if using all data, integer if using some data
 NUM_EPOCHS = 100
+#N_TESTS <= N_STEPS
 N_STEPS = 5
-N_TEST = 12
+N_TESTS = 5
 NEW_DATA_AMOUNT = 168
-VERBOSE = 0
-PREDICTION_THRESHOLD = .96 # Percentage
+VERBOSE = 2
+PREDICTION_THRESHOLD = .04 # Percentage
 DEMAND_UNINIT = 42069
-# Dictionary key is cluster model path, value is list with [old prediction, counter]
+# Dictionary key is cluster model path, value is list with [prediction accuracy, counter]
 cluster_predictions = {}
+TIME = []
 
 # Should be used by layer above to increment amount of time horizons that ML has predicted
 # rst set to true in order to reset after new data has been added into model
@@ -57,8 +60,12 @@ def sum_rows (values):
     for i in range(1, len(values)):
         if values[i] - values[i - 1] < 0:
             difference.append(values[i - 1] - values[i - 2])
+            if(values[i - 1] - values[i - 2] > 1000):
+                print(i)
         else:
             difference.append(values[i] - values[i - 1])
+            if(values[i] - values[i - 1] > 1000):
+                print(i)
     return difference
 
 # This function fits the 'model' using an input pandas 'df' and the number of 'points' to fit on.
@@ -70,13 +77,17 @@ def fit_model(model, df, points, model_location):
     values = (sum_rows(values))
     values[0] = 0
     # split into samples
-    x, y = split_sequence(values)
+    X, y = split_sequence(values)
     # reshape into [samples, timesteps, features]
-    x = x.reshape((x.shape[0], x.shape[1], 1))
+    X = X.reshape((X.shape[0], X.shape[1], 1))
     # split into train/test
-    x_train, x_test, y_train, y_test = x[:-N_TEST], x[-N_TEST:], y[:-N_TEST], y[-N_TEST:]
+    # n_test = 12
+    x_train, x_test, y_train, y_test = X[:-N_TESTS], X[-N_TESTS:], y[:-N_TESTS], y[-N_TESTS:]
     # fit the model
+    time1 = time.time()
+    model.compile(optimizer='adam', loss='mse', metrics=['mae'], run_eagerly=True)
     little_x = model.fit(x_train, y_train, epochs=NUM_EPOCHS, batch_size=32, verbose=VERBOSE, validation_data=(x_test, y_test))
+    TIME.append(time.time() - time1)
     little_x.model.save(model_location)
     return x_test, y_test, little_x
 
@@ -85,11 +96,11 @@ def fit_model(model, df, points, model_location):
 # between each data point is constant and returns the model.
 def generate_model(df, model_location):
     # define model
-    cluster_predictions[model_location] = [DEMAND_UNINIT, 0] #initialize all models [previous prediction, counter]
+    cluster_predictions[model_location] = [DEMAND_UNINIT, 0] #initialize all models [accuracy, counter]
     if (not os.path.exists(model_location)):
-        print(model_location)
         model = Sequential()
         model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS, 1)))
+        # model.add(BatchNormalization())
         model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
         model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
         model.add(Dense(1))
@@ -101,23 +112,49 @@ def generate_model(df, model_location):
 # values in the value column. It will generate predictions for DEMAND_TIME_HORIZONS and update the model passed
 # in with the new data point in the dataframe.
 def compute_prediction(model_location, df):
+    # values = df.loc[:,'value'].values
+    # values = (sum_rows(values))
+    # current = values[len(values) - 1]
+    # th = []
+    # predict_model = keras.models.load_model(model_location)#this is copy that will be used to make predictions
+    # for i in range(settings.DEMAND_TIME_HORIZONS):
+    #     row = asarray(values[-N_STEPS:]).reshape((1, N_STEPS, 1))
+    #     th.append(predict_model.model.predict(row))
+    #     values.append(th[i][0][0])
+    # current_amount = wait_amount(False, True)
+    # update = (current_amount == NEW_DATA_AMOUNT - 1)
+    # # Update if batch size reached or predictions become inaccurate
+    # if update or (abs(cluster_predictions[model_location] - th[0][0][0]) < PREDICTION_THRESHOLD):
+    #     fit_model(predict_model,df, current_amount)
+    #     wait_amount(True, False) #reset counter if
+    #
+    # return ([current] + [th[i][0][0] for i in range(settings.DEMAND_TIME_HORIZONS)])
     values = df.loc[:,'value'].values
     values = (sum_rows(values))
     current = values[len(values) - 1]
     th = []
+    current_amount = wait_amount(model_location, False, True)
+    update = (current_amount == NEW_DATA_AMOUNT - 1)
     predict_model = keras.models.load_model(model_location)#this is copy that will be used to make predictions
+    time1 = time.time()
     for i in range(settings.DEMAND_TIME_HORIZONS):
         row = asarray(values[-N_STEPS:]).reshape((1, N_STEPS, 1))
         th.append(predict_model.predict(row))
         values.append(th[i][0][0])
-    accuracy = 1 #initialize accuracy to 1 in case 
-    if (cluster_predictions[model_location][0] == DEMAND_UNINIT): cluster_predictions[model_location][0] = th[0][0][0]
-    else: accuracy = abs((cluster_predictions[model_location][0] - current) / current)
-    current_amount = wait_amount(model_location, False, True)
+    accuracy = 1
+    total_time = time.time() - time1
     # Update if batch size reached or predictions become inaccurate
-    if (((current_amount == (NEW_DATA_AMOUNT - 1)) or (accuracy < PREDICTION_THRESHOLD)) and (current_amount > (2*N_TEST))):
-        fit_model(predict_model,df, current_amount)
-        wait_amount(model_location, True, False) #reset counter if 
+    if (cluster_predictions[model_location][0] == DEMAND_UNINIT):
+        cluster_predictions[model_location][0] = th[0][0][0]
+    else:
+        accuracy = abs((cluster_predictions[model_location][0] - current) / current)
+    # current_amount = wait_amount(model_location, False, True)
+    # Update if batch size reached or predictions become inaccurate
+    if (cluster_predictions[model_location][1] == (NEW_DATA_AMOUNT - 1)) or (accuracy < PREDICTION_THRESHOLD and wait_amount(model_location, False, False) > 2*N_TESTS):
+        fit_model(predict_model, df, current_amount, model_location)
+        wait_amount(model_location, True, False)  #reset counter if else:
+    else:
+        TIME.append(total_time)
 
     return ([current] + [th[i][0][0] for i in range(settings.DEMAND_TIME_HORIZONS)])
 
@@ -136,27 +173,49 @@ def test_demonstration(model):
     predictions = []
     acc = []
     CSV = "BuildingData2018/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv"
-    true_data = [112, 109, 109]
     j = 0
     demand_data = pd.read_csv(CSV)
+    values = demand_data.loc[:, 'value'].values
+    values = (sum_rows(values))
+    # plt.plot(values)
+    # plt.ylim([80, 120])
+    # arr = list(range(0, len(values)))
+    # for root, dirs, files in os.walk('./BuildingData2018/'):
+    #     for file in files:
+    #         try:
+    #             print(file)
+    #             demand_data = pd.read_csv("./BuildingData2018/" + file)
+    #             values = demand_data.loc[:, 'value'].values
+    #             values = (sum_rows(values))
+    #
+    #             plt.plot(arr, values)
+    #             plt.title(file)
+    #             plt.savefig(file + '.pdf')
+    #             plt.show()
+    #         except:
+    #             x = 0
+    # plt.legend()
+    # plt.show()
     dates = []
     vals = []
     lol = int(len(demand_data)/10)
-    generate_model(demand_data.head(n=lol))
+    generate_model(demand_data.head(n=lol), './Models/model1')
     prev_pred = 0
     i = 0
-    # for i in range(lol, lol * 2):
-    #     vals.append(i)
-    #     new_demand_data = demand_data.head(n=i)
-    #     val = compute_prediction('./Models/model1', new_demand_data, True, 50)
-    #     dates.append(100 - abs((val[1][0] - prev_pred) / val[1][0] * 100))
-    #     prev_pred = val[1][0]
-    # plt.plot(vals, dates)
+    for i in range(lol, lol * 2):
+        vals.append(i)
+        new_demand_data = demand_data.head(n=i)
+        val = compute_prediction('./Models/model1', new_demand_data)
+        dates.append(100 - abs((val[1]- prev_pred) / val[1] * 100))
+        if(100 - abs((val[1]- prev_pred) / val[1] * 100) < 60):
+            z = 0
+        prev_pred = val[1]
+    plt.plot(vals, dates)
     # vals.append(i)
-    # plt.plot(vals, TIME)
+    plt.plot(vals, TIME)
     # plt.ylim([80, 120])
     plt.show()
 # tada = generate_demand_predictions("Demand Data/Annex West Active Power_August.csv")
 # update = accuracy(100, "Demand Data/Running Data.csv")
-# test_demonstration('hi')
+test_demonstration('hi')
 
