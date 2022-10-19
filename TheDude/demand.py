@@ -19,6 +19,7 @@ import time
 NUM_DATA_POINTS = "MAX" # MAX if using all data, integer if using some data
 NUM_EPOCHS = 100
 N_STEPS = 5
+N_TEST = 12
 NEW_DATA_AMOUNT = 168
 VERBOSE = 0
 PREDICTION_THRESHOLD = .96 # Percentage
@@ -73,8 +74,7 @@ def fit_model(model, df, points, model_location):
     # reshape into [samples, timesteps, features]
     x = x.reshape((x.shape[0], x.shape[1], 1))
     # split into train/test
-    n_test = 12
-    x_train, x_test, y_train, y_test = x[:-n_test], x[-n_test:], y[:-n_test], y[-n_test:]
+    x_train, x_test, y_train, y_test = x[:-N_TEST], x[-N_TEST:], y[:-N_TEST], y[-N_TEST:]
     # fit the model
     little_x = model.fit(x_train, y_train, epochs=NUM_EPOCHS, batch_size=32, verbose=VERBOSE, validation_data=(x_test, y_test))
     little_x.model.save(model_location)
@@ -115,7 +115,7 @@ def compute_prediction(model_location, df):
     else: accuracy = abs((cluster_predictions[model_location][0] - current) / current)
     current_amount = wait_amount(model_location, False, True)
     # Update if batch size reached or predictions become inaccurate
-    if (cluster_predictions[model_location][1] == (NEW_DATA_AMOUNT - 1)) or (accuracy < PREDICTION_THRESHOLD):
+    if (((current_amount == (NEW_DATA_AMOUNT - 1)) or (accuracy < PREDICTION_THRESHOLD)) and (current_amount > (2*N_TEST))):
         fit_model(predict_model,df, current_amount)
         wait_amount(model_location, True, False) #reset counter if 
 
