@@ -19,10 +19,12 @@ import time
 NUM_DATA_POINTS = "MAX" # MAX if using all data, integer if using some data
 NUM_EPOCHS = 100
 N_STEPS = 5
+N_TEST = 12
 NEW_DATA_AMOUNT = 168
-VERBOSE = 2
-PREDICTION_THRESHOLD = .04 # Percentage
-# Dictionary key is cluster model path, value is list with [prediction accuracy, counter]
+VERBOSE = 0
+PREDICTION_THRESHOLD = .96 # Percentage
+DEMAND_UNINIT = 42069
+# Dictionary key is cluster model path, value is list with [old prediction, counter]
 cluster_predictions = {}
 
 # Should be used by layer above to increment amount of time horizons that ML has predicted
@@ -72,8 +74,7 @@ def fit_model(model, df, points, model_location):
     # reshape into [samples, timesteps, features]
     x = x.reshape((x.shape[0], x.shape[1], 1))
     # split into train/test
-    n_test = 12
-    x_train, x_test, y_train, y_test = x[:-n_test], x[-n_test:], y[:-n_test], y[-n_test:]
+    x_train, x_test, y_train, y_test = x[:-N_TEST], x[-N_TEST:], y[:-N_TEST], y[-N_TEST:]
     # fit the model
     little_x = model.fit(x_train, y_train, epochs=NUM_EPOCHS, batch_size=32, verbose=VERBOSE, validation_data=(x_test, y_test))
     little_x.model.save(model_location)
@@ -84,8 +85,9 @@ def fit_model(model, df, points, model_location):
 # between each data point is constant and returns the model.
 def generate_model(df, model_location):
     # define model
-    cluster_predictions[model_location] = [1, 0] #initialize all models [accuracy, counter]
+    cluster_predictions[model_location] = [DEMAND_UNINIT, 0] #initialize all models [previous prediction, counter]
     if (not os.path.exists(model_location)):
+        print(model_location)
         model = Sequential()
         model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS, 1)))
         model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
@@ -106,13 +108,16 @@ def compute_prediction(model_location, df):
     predict_model = keras.models.load_model(model_location)#this is copy that will be used to make predictions
     for i in range(settings.DEMAND_TIME_HORIZONS):
         row = asarray(values[-N_STEPS:]).reshape((1, N_STEPS, 1))
-        th.append(predict_model.model.predict(row))
+        th.append(predict_model.predict(row))
         values.append(th[i][0][0])
-    current_amount = wait_amount(False, True)
+    accuracy = 1 #initialize accuracy to 1 in case 
+    if (cluster_predictions[model_location][0] == DEMAND_UNINIT): cluster_predictions[model_location][0] = th[0][0][0]
+    else: accuracy = abs((cluster_predictions[model_location][0] - current) / current)
+    current_amount = wait_amount(model_location, False, True)
     # Update if batch size reached or predictions become inaccurate
-    if update or (abs(cluster_predictions[model_location] - th[0][0][0]) < PREDICTION_THRESHOLD):
+    if (((current_amount == (NEW_DATA_AMOUNT - 1)) or (accuracy < PREDICTION_THRESHOLD)) and (current_amount > (2*N_TEST))):
         fit_model(predict_model,df, current_amount)
-        wait_amount(True, False) #reset counter if 
+        wait_amount(model_location, True, False) #reset counter if 
 
     return ([current] + [th[i][0][0] for i in range(settings.DEMAND_TIME_HORIZONS)])
 
