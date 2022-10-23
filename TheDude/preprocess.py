@@ -32,10 +32,11 @@ def replace_rows():
         print(fp)
         cluster_data = pd.read_csv(fp, header=0, index_col=0)
         demand = cluster_data["value"].tolist()
+        old_length = len(demand)
         prev = 1 #flag for whether previous element was 0
         for i, e in reversed(list(enumerate(demand))): #traverse through row from end
             if (i >= 1): 
-                if (demand[i - 1] < 0): #if next value is negative, don't subtract
+                if ((demand[i - 1] < 0) or (demand[i] == 0)): #if next value is negative, don't subtract
                     pass
                 elif ((demand[i] - demand[i - 1]) > 0): 
                     demand[i] -= demand[i - 1]
@@ -48,7 +49,7 @@ def replace_rows():
                         prev = 0
                 else: #if negative, keep demand[i] the same
                     pass
-        cluster_data["value"] = demand
+        cluster_data["value"] = demand[0 : cluster_data.shape[0]]
         cluster_data.to_csv(fp)           
 
 if __name__ == "__main__":
