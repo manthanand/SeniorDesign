@@ -217,5 +217,3 @@ def test_demonstration(model):
     plt.show()
 # tada = generate_demand_predictions("Demand Data/Annex West Active Power_August.csv")
 # update = accuracy(100, "Demand Data/Running Data.csv")
-test_demonstration('hi')
-
