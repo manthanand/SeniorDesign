@@ -30,6 +30,15 @@ DEMAND_UNINIT = 42069
 cluster_predictions = {}
 TIME = []
 
+#compiles list of new demand data to refit on
+#ignores NULL elements
+def get_new_data(old_data, amount):
+    data = []
+    for i in range(-1*amount, -1):
+        if old_data[i] != '\0':
+            data.append(old_data[i])
+    return data
+
 # Should be used by layer above to increment amount of time horizons that ML has predicted
 # rst set to true in order to reset after new data has been added into model
 # inc set to true to increment counter, false to just return value of counter
@@ -59,7 +68,7 @@ def split_sequence(sequence):
 def fit_model(model, df, points, model_location):
     df = df.tail(n=points)
     values = df.loc[:,'value'].values
-    values[0] = 0
+    values = get_new_data(values, wait_amount(model_location, True, False))
     # split into samples
     X, y = split_sequence(values)
     # reshape into [samples, timesteps, features]
@@ -96,7 +105,7 @@ def generate_model(df, model_location):
 # values in the value column. It will generate predictions for DEMAND_TIME_HORIZONS and update the model passed
 # in with the new data point in the dataframe.
 def compute_prediction(model_location, df):
-    values = df.loc[:,'value'].values
+    values = (df.loc[:,'value'].values).tolist()
     current = values[len(values) - 1]
     th = []
     current_amount = wait_amount(model_location, False, True)
@@ -118,7 +127,7 @@ def compute_prediction(model_location, df):
     # Update if batch size reached or predictions become inaccurate
     if (cluster_predictions[model_location][1] == (NEW_DATA_AMOUNT - 1)) or (accuracy < PREDICTION_THRESHOLD and wait_amount(model_location, False, False) > 2*N_TESTS):
         fit_model(predict_model, df, current_amount, model_location)
-        wait_amount(model_location, True, False)  #reset counter if else:
+        # wait_amount(model_location, True, False)  #reset counter if else: ((this is now done in get_new_data()
     else:
         TIME.append(total_time)
 
@@ -142,8 +151,9 @@ def test_demonstration(model):
     j = 0
     demand_data = pd.read_csv(CSV)
     values = demand_data.loc[:, 'value'].values
-    values = (sum_rows(values))
+    # values = (sum_rows(values))
     # plt.plot(values)
+    # plt.show()
     # plt.ylim([80, 120])
     # arr = list(range(0, len(values)))
     # for root, dirs, files in os.walk('./BuildingData2018/'):
@@ -152,12 +162,12 @@ def test_demonstration(model):
     #             print(file)
     #             demand_data = pd.read_csv("./BuildingData2018/" + file)
     #             values = demand_data.loc[:, 'value'].values
-    #             values = (sum_rows(values))
+    #             # values = (sum_rows(values))
     #
     #             plt.plot(arr, values)
     #             plt.title(file)
-    #             plt.savefig(file + '.pdf')
-    #             plt.show()
+    #             # plt.savefig(file + '.pdf')
+    #             # plt.show()
     #         except:
     #             x = 0
     # plt.legend()
@@ -181,5 +191,6 @@ def test_demonstration(model):
     plt.plot(vals, TIME)
     # plt.ylim([80, 120])
     plt.show()
+test_demonstration('')
 # tada = generate_demand_predictions("Demand Data/Annex West Active Power_August.csv")
 # update = accuracy(100, "Demand Data/Running Data.csv")
