@@ -53,28 +53,12 @@ def split_sequence(sequence):
         y.append(seq_y)
     return asarray(x), asarray(y)
 
-
-def sum_rows (values):
-    difference = []
-    difference.append(values[0])
-    for i in range(1, len(values)):
-        if values[i] - values[i - 1] < 0:
-            difference.append(values[i - 1] - values[i - 2])
-            if(values[i - 1] - values[i - 2] > 1000):
-                print(i)
-        else:
-            difference.append(values[i] - values[i - 1])
-            if(values[i] - values[i - 1] > 1000):
-                print(i)
-    return difference
-
 # This function fits the 'model' using an input pandas 'df' and the number of 'points' to fit on.
 # 'points' is last number of points collected
 # It also stores the fitted model in the filepath provided by 'model_location'
 def fit_model(model, df, points, model_location):
     df = df.tail(n=points)
     values = df.loc[:,'value'].values
-    values = (sum_rows(values))
     values[0] = 0
     # split into samples
     X, y = split_sequence(values)
@@ -112,25 +96,7 @@ def generate_model(df, model_location):
 # values in the value column. It will generate predictions for DEMAND_TIME_HORIZONS and update the model passed
 # in with the new data point in the dataframe.
 def compute_prediction(model_location, df):
-    # values = df.loc[:,'value'].values
-    # values = (sum_rows(values))
-    # current = values[len(values) - 1]
-    # th = []
-    # predict_model = keras.models.load_model(model_location)#this is copy that will be used to make predictions
-    # for i in range(settings.DEMAND_TIME_HORIZONS):
-    #     row = asarray(values[-N_STEPS:]).reshape((1, N_STEPS, 1))
-    #     th.append(predict_model.model.predict(row))
-    #     values.append(th[i][0][0])
-    # current_amount = wait_amount(False, True)
-    # update = (current_amount == NEW_DATA_AMOUNT - 1)
-    # # Update if batch size reached or predictions become inaccurate
-    # if update or (abs(cluster_predictions[model_location] - th[0][0][0]) < PREDICTION_THRESHOLD):
-    #     fit_model(predict_model,df, current_amount)
-    #     wait_amount(True, False) #reset counter if
-    #
-    # return ([current] + [th[i][0][0] for i in range(settings.DEMAND_TIME_HORIZONS)])
     values = df.loc[:,'value'].values
-    values = (sum_rows(values))
     current = values[len(values) - 1]
     th = []
     current_amount = wait_amount(model_location, False, True)
@@ -172,7 +138,7 @@ def accuracy(last_15min_predication, index):
 def test_demonstration(model):
     predictions = []
     acc = []
-    CSV = "BuildingData2018/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv"
+    CSV = "BuildingData2018_processed/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv"
     j = 0
     demand_data = pd.read_csv(CSV)
     values = demand_data.loc[:, 'value'].values
