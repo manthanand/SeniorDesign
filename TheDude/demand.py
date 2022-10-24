@@ -191,6 +191,5 @@ def test_demonstration(model):
     plt.plot(vals, TIME)
     # plt.ylim([80, 120])
     plt.show()
-test_demonstration('')
 # tada = generate_demand_predictions("Demand Data/Annex West Active Power_August.csv")
 # update = accuracy(100, "Demand Data/Running Data.csv")
