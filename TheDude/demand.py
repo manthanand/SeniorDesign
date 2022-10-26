@@ -68,7 +68,7 @@ def split_sequence(sequence):
 def fit_model(model, df, points, model_location):
     df = df.tail(n=points)
     values = df.loc[:,'value'].values
-    values = get_new_data(values, wait_amount(model_location, True, False))
+    values = get_new_data(values, points)
     # split into samples
     X, y = split_sequence(values)
     # reshape into [samples, timesteps, features]
