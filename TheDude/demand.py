@@ -164,9 +164,12 @@ def test_demonstration():
             dates.append(100 - (abs((prev_pred - val[0])) / val[0] * 100))
             if(100 - (abs((prev_pred - val[0])) / val[0] * 100) < 0):
                 z = 0
-            
+                if((prev_pred - val[0]) < 0): negative += 1
+                else: positive += 1
             prev_pred = val[1]
             predicted_demand.append(val[1])
+    print("Negative: ", negative)
+    print("Positive: ", positive)
     axis[0].plot(vals, dates)
     axis[0].set_ylim([-10, 110])
     axis[1].plot(vals, true_demand)
