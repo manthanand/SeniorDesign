@@ -19,9 +19,7 @@ import time
 
 NUM_DATA_POINTS = "MAX" # MAX if using all data, integer if using some data
 NUM_EPOCHS = 100
-#N_TESTS <= N_STEPS
 N_STEPS = 5
-N_TESTS = 5
 NEW_DATA_AMOUNT = 168
 VERBOSE = 2
 PREDICTION_THRESHOLD = .04 # Percentage
@@ -35,7 +33,7 @@ TIME = []
 def get_new_data(old_data, amount):
     data = []
     for i in range(-1*amount, -1):
-        if old_data[i] != '\0':
+        if old_data[i] != -1:
             data.append(old_data[i])
     return data
 
@@ -65,17 +63,14 @@ def split_sequence(sequence):
 # This function fits the 'model' using an input pandas 'df' and the number of 'points' to fit on.
 # 'points' is last number of points collected
 # It also stores the fitted model in the filepath provided by 'model_location'
-def fit_model(model, df, points, model_location):
+def fit_model(model, df, points, model_location, n_tests):
     df = df.tail(n=points)
     values = df.loc[:,'value'].values
     values = get_new_data(values, points)
     # split into samples
     X, y = split_sequence(values)
-    # reshape into [samples, timesteps, features]
-    X = X.reshape((X.shape[0], X.shape[1], 1))
     # split into train/test
-    # n_test = 12
-    x_train, x_test, y_train, y_test = X[:-N_TESTS], X[-N_TESTS:], y[:-N_TESTS], y[-N_TESTS:]
+    x_train, x_test, y_train, y_test = X[:-n_tests], X[-n_tests:], y[:-n_tests], y[-n_tests:]
     # fit the model
     time1 = time.time()
     model.compile(optimizer='adam', loss='mse', metrics=['mae'], run_eagerly=True)
@@ -99,7 +94,8 @@ def generate_model(df, model_location):
         model.add(Dense(1))
         # compile the model
         model.compile(optimizer='adam', loss='mse', metrics=['mae'])
-        x_test, y_test, model = fit_model(model, df, len(df) if (NUM_DATA_POINTS == "MAX") else NUM_DATA_POINTS, model_location)
+        # Validate on last week of data for generating entire model
+        x_test, y_test, model = fit_model(model, df, len(df) if (NUM_DATA_POINTS == "MAX") else NUM_DATA_POINTS, model_location, 150)
 
 # This function generates a prediction given an input model and dataframe that contains the power consumption
 # values in the value column. It will generate predictions for DEMAND_TIME_HORIZONS and update the model passed
@@ -125,71 +121,56 @@ def compute_prediction(model_location, df):
         accuracy = abs((cluster_predictions[model_location][0] - current) / current)
     # current_amount = wait_amount(model_location, False, True)
     # Update if batch size reached or predictions become inaccurate
-    if (cluster_predictions[model_location][1] == (NEW_DATA_AMOUNT - 1)) or (accuracy < PREDICTION_THRESHOLD and wait_amount(model_location, False, False) > 2*N_TESTS):
-        fit_model(predict_model, df, current_amount, model_location)
-        # wait_amount(model_location, True, False)  #reset counter if else: ((this is now done in get_new_data()
+    if (cluster_predictions[model_location][1] == (NEW_DATA_AMOUNT - 1)) or ((accuracy < PREDICTION_THRESHOLD) and (wait_amount(model_location, False, False) > (2 * 5))):
+        # validate on past 5 hours of data for refitting model
+        wait_amount(model_location, True, False)
+        fit_model(predict_model, df, current_amount, model_location, 5)
     else:
         TIME.append(total_time)
 
     return ([current] + [th[i][0][0] for i in range(settings.DEMAND_TIME_HORIZONS)])
-
-#also look into retraining on whole data set every x amount of days
 
 def accuracy(last_15min_predication, index):
     try:
         actual_result = sum(index)
     except:
         actual_result = index
-    # actual_result = sum(values[index])
     acc = 100 - abs((actual_result - last_15min_predication) / actual_result * 100)
     return acc
 
-def test_demonstration(model):
-    predictions = []
-    acc = []
+def test_demonstration():
     CSV = "BuildingData2018_processed/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv"
     j = 0
     demand_data = pd.read_csv(CSV)
     values = demand_data.loc[:, 'value'].values
-    # values = (sum_rows(values))
-    # plt.plot(values)
-    # plt.show()
-    # plt.ylim([80, 120])
-    # arr = list(range(0, len(values)))
-    # for root, dirs, files in os.walk('./BuildingData2018/'):
-    #     for file in files:
-    #         try:
-    #             print(file)
-    #             demand_data = pd.read_csv("./BuildingData2018/" + file)
-    #             values = demand_data.loc[:, 'value'].values
-    #             # values = (sum_rows(values))
-    #
-    #             plt.plot(arr, values)
-    #             plt.title(file)
-    #             # plt.savefig(file + '.pdf')
-    #             # plt.show()
-    #         except:
-    #             x = 0
-    # plt.legend()
-    # plt.show()
     dates = []
     vals = []
+    true_demand = []
+    predicted_demand = []
+    predicted_demand.append(0)
     lol = int(len(demand_data)/10)
     generate_model(demand_data.head(n=lol), './Models/model1')
     prev_pred = 0
     i = 0
+    negative = 0 # How many predictions were underpredicted
+    positive = 0 # How many of our predictions were overpredicted
+    figure, axis = plt.subplots(2, 1)
     for i in range(lol, lol * 2):
-        vals.append(i)
         new_demand_data = demand_data.head(n=i)
-        val = compute_prediction('./Models/model1', new_demand_data)
-        dates.append(100 - abs((val[1]- prev_pred) / val[1] * 100))
-        if(100 - abs((val[1]- prev_pred) / val[1] * 100) < 60):
-            z = 0
-        prev_pred = val[1]
-    plt.plot(vals, dates)
-    # vals.append(i)
-    plt.plot(vals, TIME)
-    # plt.ylim([80, 120])
+        if (demand_data.iloc[-1]['value'] != -1):
+            val = compute_prediction('./Models/model1', new_demand_data)
+            vals.append(i)
+            true_demand.append(val[0])
+            dates.append(100 - (abs((prev_pred - val[0])) / val[0] * 100))
+            if(100 - (abs((prev_pred - val[0])) / val[0] * 100) < 0):
+                z = 0
+            
+            prev_pred = val[1]
+            predicted_demand.append(val[1])
+    axis[0].plot(vals, dates)
+    axis[0].set_ylim([-10, 110])
+    axis[1].plot(vals, true_demand)
+    vals.append(i)
+    axis[1].plot(vals, predicted_demand)
     plt.show()
-# tada = generate_demand_predictions("Demand Data/Annex West Active Power_August.csv")
-# update = accuracy(100, "Demand Data/Running Data.csv")
+test_demonstration()
