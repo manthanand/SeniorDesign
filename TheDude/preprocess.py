@@ -26,7 +26,7 @@ def add_priorities():
     clusters["Priority"] = priorities
     clusters.to_csv(settings.clusterfp, index=False)
 
-def replace_rows():
+def add_skips():
     for i, r in clusters.iterrows():
         fp = glob.glob(settings.demandfp + r["Cluster"] + "*")[0]
         print(fp)
@@ -50,7 +50,17 @@ def replace_rows():
                 else: #if negative, keep demand[i] the same
                     pass
         cluster_data["value"] = demand[0 : cluster_data.shape[0]]
-        cluster_data.to_csv(fp)           
+        cluster_data.to_csv(fp)    
+
+def skip_zeros():
+    for i, r in clusters.iterrows():
+        fp = glob.glob(settings.demandfp + r["Cluster"] + "*")[0]
+        print(fp)
+        cluster_data = pd.read_csv(fp, header=0, index_col=0)
+        demand = cluster_data["value"].tolist()
+        for i in range(0, len(demand), 24): demand[i] = -1
+        cluster_data["value"] = demand[0 : cluster_data.shape[0]]
+        cluster_data.to_csv(fp)
 
 if __name__ == "__main__":
-    replace_rows()
+    skip_zeros()

@@ -69,6 +69,8 @@ def fit_model(model, df, points, model_location, n_tests):
     values = get_new_data(values, points)
     # split into samples
     X, y = split_sequence(values)
+    # reshape into [samples, timesteps, features]
+    X = X.reshape((X.shape[0], X.shape[1], 1))
     # split into train/test
     x_train, x_test, y_train, y_test = X[:-n_tests], X[-n_tests:], y[:-n_tests], y[-n_tests:]
     # fit the model
@@ -162,7 +164,7 @@ def test_demonstration():
             vals.append(i)
             true_demand.append(val[0])
             dates.append(100 - (abs((prev_pred - val[0])) / val[0] * 100))
-            if(100 - (abs((prev_pred - val[0])) / val[0] * 100) < 0):
+            if((abs((prev_pred - val[0])) / val[0]) < (1 - PREDICTION_THRESHOLD)):
                 z = 0
                 if((prev_pred - val[0]) < 0): negative += 1
                 else: positive += 1
@@ -175,5 +177,5 @@ def test_demonstration():
     axis[1].plot(vals, true_demand)
     vals.append(i)
     axis[1].plot(vals, predicted_demand)
-    plt.show()
+    plt.savefig("matplotlib.png")
 test_demonstration()
