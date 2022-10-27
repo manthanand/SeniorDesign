@@ -21,7 +21,7 @@ NUM_DATA_POINTS = "MAX" # MAX if using all data, integer if using some data
 NUM_EPOCHS = 100
 N_STEPS = 5
 NEW_DATA_AMOUNT = 168
-VERBOSE = 2
+VERBOSE = 0
 PREDICTION_THRESHOLD = .04 # Percentage
 DEMAND_UNINIT = 42069
 # Dictionary key is cluster model path, value is list with [prediction accuracy, counter]
@@ -112,7 +112,7 @@ def compute_prediction(model_location, df):
     time1 = time.time()
     for i in range(settings.DEMAND_TIME_HORIZONS):
         row = asarray(values[-N_STEPS:]).reshape((1, N_STEPS, 1))
-        th.append(predict_model.predict(row))
+        th.append(predict_model.predict(row, verbose=VERBOSE))
         values.append(th[i][0][0])
     accuracy = 1
     total_time = time.time() - time1
@@ -156,20 +156,23 @@ def test_demonstration():
     i = 0
     negative = 0 # How many predictions were underpredicted
     positive = 0 # How many of our predictions were overpredicted
+    idx = []
     figure, axis = plt.subplots(2, 1)
     for i in range(lol, lol * 2):
         new_demand_data = demand_data.head(n=i)
-        if (demand_data.iloc[-1]['value'] != -1):
+        if (demand_data.iloc[-1]['value'] > 10):
             val = compute_prediction('./Models/model1', new_demand_data)
             vals.append(i)
             true_demand.append(val[0])
             dates.append(100 - (abs((prev_pred - val[0])) / val[0] * 100))
-            if((abs((prev_pred - val[0])) / val[0]) < (1 - PREDICTION_THRESHOLD)):
+            if((abs((prev_pred - val[0])) / val[0]) > PREDICTION_THRESHOLD):
+                print((abs((prev_pred - val[0])) / val[0]), val[0], prev_pred)
                 z = 0
                 if((prev_pred - val[0]) < 0): negative += 1
                 else: positive += 1
             prev_pred = val[1]
             predicted_demand.append(val[1])
+        else: idx.append(i)
     print("Negative: ", negative)
     print("Positive: ", positive)
     axis[0].plot(vals, dates)
@@ -178,4 +181,5 @@ def test_demonstration():
     vals.append(i)
     axis[1].plot(vals, predicted_demand)
     plt.savefig("matplotlib.png")
+    print(idx)
 test_demonstration()
