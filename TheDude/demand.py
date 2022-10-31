@@ -33,7 +33,7 @@ TIME = []
 def get_new_data(old_data, amount):
     data = []
     for i in range(-1*amount, -1):
-        if old_data[i] != -1:
+        if old_data[i] > 0:
             data.append(old_data[i])
     return data
 
@@ -132,14 +132,7 @@ def compute_prediction(model_location, df):
 
     return ([current] + [th[i][0][0] for i in range(settings.DEMAND_TIME_HORIZONS)])
 
-def accuracy(last_15min_predication, index):
-    try:
-        actual_result = sum(index)
-    except:
-        actual_result = index
-    acc = 100 - abs((actual_result - last_15min_predication) / actual_result * 100)
-    return acc
-
+#returns accuracy
 def test_demonstration():
     CSV = "BuildingData2018_processed/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv"
     j = 0
@@ -149,25 +142,24 @@ def test_demonstration():
     vals = []
     true_demand = []
     predicted_demand = []
-    predicted_demand.append(0)
+    predicted_demand.append(100)
     lol = int(len(demand_data)/10)
     generate_model(demand_data.head(n=lol), './Models/model1')
-    prev_pred = 0
-    i = 0
+    prev_pred = compute_prediction('./Models/model1', demand_data.head(n=(lol - 1)))[1]
     negative = 0 # How many predictions were underpredicted
     positive = 0 # How many of our predictions were overpredicted
     idx = []
-    figure, axis = plt.subplots(2, 1)
+    acc = 0
     for i in range(lol, lol * 2):
         new_demand_data = demand_data.head(n=i)
-        if (demand_data.iloc[-1]['value'] > 10):
-            val = compute_prediction('./Models/model1', new_demand_data)
+        val = compute_prediction('./Models/model1', new_demand_data)
+        if (val[0] > 10):
             vals.append(i)
             true_demand.append(val[0])
             dates.append(100 - (abs((prev_pred - val[0])) / val[0] * 100))
+            acc += 1 - (abs((prev_pred - val[0])) / val[0])
             if((abs((prev_pred - val[0])) / val[0]) > PREDICTION_THRESHOLD):
-                print((abs((prev_pred - val[0])) / val[0]), val[0], prev_pred)
-                z = 0
+                print((100 - (abs((prev_pred - val[0])) / val[0] * 100)), val[0], prev_pred)
                 if((prev_pred - val[0]) < 0): negative += 1
                 else: positive += 1
             prev_pred = val[1]
@@ -175,11 +167,11 @@ def test_demonstration():
         else: idx.append(i)
     print("Negative: ", negative)
     print("Positive: ", positive)
-    axis[0].plot(vals, dates)
-    axis[0].set_ylim([-10, 110])
-    axis[1].plot(vals, true_demand)
-    vals.append(i)
-    axis[1].plot(vals, predicted_demand)
+    # figure, axis = plt.subplots(2, 1)
+    # axis[0].plot([i for i in range(len(dates))], dates)
+    # axis[1].plot([i for i in range(len(true_demand))], true_demand)
+    # axis[1].plot([i for i in range(len(predicted_demand))], predicted_demand)
     plt.savefig("matplotlib.png")
-    print(idx)
+    print(idx, acc/lol)
+    return acc/lol
 test_demonstration()

@@ -62,5 +62,18 @@ def skip_zeros():
         cluster_data["value"] = demand[0 : cluster_data.shape[0]]
         cluster_data.to_csv(fp)
 
+def replace_negatives():
+    for i, r in clusters.iterrows():
+        fp = glob.glob(settings.demandfp + r["Cluster"] + "*")[0]
+        print(fp)
+        cluster_data = pd.read_csv(fp, header=0, index_col=0)
+        demand = cluster_data["value"].tolist()
+        for i in range(len(demand)):
+            if ((demand[i] == -1) and (i%24 == 0)): #This is if the data is at 6am
+                demand[i] = (demand[i-1] + demand[i+1]) / 2
+            elif (demand[i] == -1):
+                demand[i] = (demand[i-24] + demand[i+24]) / 2
+
+
 if __name__ == "__main__":
-    skip_zeros()
+    replace_negatives()
