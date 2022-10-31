@@ -133,7 +133,7 @@ def compute_prediction(model_location, df):
     return ([current] + [th[i][0][0] for i in range(settings.DEMAND_TIME_HORIZONS)])
 
 #returns accuracy
-def test_demonstration():
+def test_demonstration(epoch):
     CSV = "BuildingData2018_processed/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv"
     j = 0
     demand_data = pd.read_csv(CSV)
@@ -142,6 +142,7 @@ def test_demonstration():
     vals = []
     true_demand = []
     predicted_demand = []
+
     predicted_demand.append(100)
     lol = int(len(demand_data)/10)
     generate_model(demand_data.head(n=lol), './Models/model1')
@@ -174,4 +175,21 @@ def test_demonstration():
     plt.savefig("matplotlib.png")
     print(idx, acc/lol)
     return acc/lol
-test_demonstration()
+
+#List of epochs
+#Specify number of epochs here
+epoch = list(range(50, 150))
+accuracies = []
+
+for i in epoch:
+    accuracy = test_demonstration(epoch)
+    accuracies.append(accuracy)
+    dir = './Models/model1'
+    for f in os.listdir(dir):
+        os.remove(os.path.join(dir, f))
+     
+plt.plot(epoch, accuracies)
+plt.set_xlabel("Epochs")
+plt.set_ylabel("Accuracy")
+    
+print(accuracies)
