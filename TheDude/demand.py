@@ -12,17 +12,16 @@ from keras.layers import LSTM
 from keras.layers import BatchNormalization
 import keras
 import matplotlib.pyplot as plt
-import csv
-import jinja2
 import settings
 import time
+from multiprocessing import Pool
 
 NUM_DATA_POINTS = "MAX" # MAX if using all data, integer if using some data
 NUM_EPOCHS = 100
 N_STEPS = 5
 NEW_DATA_AMOUNT = 168
-VERBOSE = 0
-PREDICTION_THRESHOLD = .04 # Percentage
+VERBOSE = 2
+PREDICTION_THRESHOLD = .11 # Percentage
 DEMAND_UNINIT = 42069
 # Dictionary key is cluster model path, value is list with [prediction accuracy, counter]
 cluster_predictions = {}
@@ -88,6 +87,7 @@ def generate_model(df, model_location):
     # define model
     cluster_predictions[model_location] = [DEMAND_UNINIT, 0] #initialize all models [accuracy, counter]
     if (not os.path.exists(model_location)):
+        print("generating model")
         model = Sequential()
         model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS, 1)))
         # model.add(BatchNormalization())
@@ -140,34 +140,29 @@ def accuracy(last_15min_predication, index):
     acc = 100 - abs((actual_result - last_15min_predication) / actual_result * 100)
     return acc
 
-def test_demonstration():
-    CSV = "BuildingData2018_processed/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv"
-    j = 0
-    demand_data = pd.read_csv(CSV)
-    values = demand_data.loc[:, 'value'].values
+def test_demonstration(dir, demand_data):
     dates = []
     vals = []
     true_demand = []
     predicted_demand = []
-    predicted_demand.append(0)
+    predicted_demand.append(100)
     lol = int(len(demand_data)/10)
-    generate_model(demand_data.head(n=lol), './Models/model1')
-    prev_pred = 0
-    i = 0
+    generate_model(demand_data.head(n=lol), dir)
+    prev_pred = compute_prediction(dir, demand_data.head(n=(lol - 1)))[1]
     negative = 0 # How many predictions were underpredicted
     positive = 0 # How many of our predictions were overpredicted
     idx = []
-    figure, axis = plt.subplots(2, 1)
+    acc = 0
     for i in range(lol, lol * 2):
         new_demand_data = demand_data.head(n=i)
-        if (demand_data.iloc[-1]['value'] > 10):
-            val = compute_prediction('./Models/model1', new_demand_data)
+        val = compute_prediction(dir, new_demand_data)
+        if (val[0] > 10):
             vals.append(i)
             true_demand.append(val[0])
             dates.append(100 - (abs((prev_pred - val[0])) / val[0] * 100))
+            acc += 1 - (abs((prev_pred - val[0])) / val[0])
             if((abs((prev_pred - val[0])) / val[0]) > PREDICTION_THRESHOLD):
-                print((abs((prev_pred - val[0])) / val[0]), val[0], prev_pred)
-                z = 0
+                print((100 - (abs((prev_pred - val[0])) / val[0] * 100)), val[0], prev_pred)
                 if((prev_pred - val[0]) < 0): negative += 1
                 else: positive += 1
             prev_pred = val[1]
@@ -175,11 +170,28 @@ def test_demonstration():
         else: idx.append(i)
     print("Negative: ", negative)
     print("Positive: ", positive)
-    axis[0].plot(vals, dates)
-    axis[0].set_ylim([-10, 110])
-    axis[1].plot(vals, true_demand)
-    vals.append(i)
-    axis[1].plot(vals, predicted_demand)
+    figure, axis = plt.subplots(2, 1)
+    axis[0].plot([i for i in range(len(dates))], dates)
+    axis[1].plot([i for i in range(len(true_demand))], true_demand)
+    axis[1].plot([i for i in range(len(predicted_demand))], predicted_demand)
     plt.savefig("matplotlib.png")
-    print(idx)
-test_demonstration()
+    print(idx, acc/lol)
+    return acc/lol
+
+# test_demonstration('./Models/model1', pd.read_csv("BuildingData2018_processed/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv"))
+
+demand_data = pd.read_csv("BuildingData2018_processed/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv")
+
+def helper_epoch_test(i):
+        global NUM_EPOCHS
+        NUM_EPOCHS = i
+        return test_demonstration(f'./Models/model{i}', demand_data)
+
+def test_epochs():
+    acc = []
+    with Pool() as p: acc = p.map(helper_epoch_test, range(50,150)) #run multiprocessing
+    print(acc)
+    plt.xlabel("Number Epochs")
+    plt.ylabel("Accuracy")
+    plt.plot(range(50,150), acc)
+test_epochs()    
