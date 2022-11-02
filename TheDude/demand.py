@@ -16,11 +16,11 @@ import settings
 import time
 from multiprocessing import Pool
 
-NUM_DATA_POINTS = "MAX" # MAX if using all data, integer if using some data
+NUM_DATA_POINTS = 1500 # MAX if using all data, integer if using some data
 NUM_EPOCHS = 100
 N_STEPS = 5
 NEW_DATA_AMOUNT = 168
-VERBOSE = 0
+VERBOSE = 2
 PREDICTION_THRESHOLD = .11 # Percentage
 DEMAND_UNINIT = 42069
 # Dictionary key is cluster model path, value is list with [prediction accuracy, counter]
@@ -77,7 +77,6 @@ def generate_model(df, model_location):
     # define model
     cluster_predictions[model_location] = [DEMAND_UNINIT, 0] #initialize all models [accuracy, counter]
     if (not os.path.exists(model_location)):
-        print("generating model")
         model = Sequential()
         model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS, 1)))
         # model.add(BatchNormalization())
@@ -162,7 +161,7 @@ def test_demonstration(dir, demand_data):
 
 # test_demonstration('./Models/model1', pd.read_csv("BuildingData2018_processed/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv"))
 
-demand_data = pd.read_csv("BuildingData2018_processed/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv")
+# demand_data = pd.read_csv("BuildingData2018_processed/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv")
 
 def helper_epoch_test(i):
         global NUM_EPOCHS
@@ -184,4 +183,4 @@ def test_epochs():
     plt.xlabel("Number Epochs")
     plt.ylabel("Accuracy")
     plt.plot(x, acc)
-test_epochs()    
+#test_epochs()    
