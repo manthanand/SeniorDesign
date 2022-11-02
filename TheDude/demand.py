@@ -23,7 +23,7 @@ NEW_DATA_AMOUNT = 168
 VERBOSE = 2
 PREDICTION_THRESHOLD = .11 # Percentage
 DEMAND_UNINIT = 42069
-# Dictionary key is cluster model path, value is list with [prediction accuracy, counter]
+# Dictionary key is cluster model path, value is list with [prediction demand, counter]
 cluster_predictions = {}
 TIME = []
 
@@ -110,6 +110,7 @@ def compute_prediction(model_location, df):
         cluster_predictions[model_location][0] = th[0][0][0]
     else:
         accuracy = abs((cluster_predictions[model_location][0] - current) / current)
+        cluster_predictions[model_location][0] = th[0][0][0]
     # current_amount = wait_amount(model_location, False, True)
     # Update if batch size reached or predictions become inaccurate
     if (cluster_predictions[model_location][1] == (NEW_DATA_AMOUNT - 1)) or ((accuracy < PREDICTION_THRESHOLD) and (wait_amount(model_location, False, False) > (2 * 5))):
