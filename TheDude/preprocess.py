@@ -69,10 +69,18 @@ def replace_negatives():
         cluster_data = pd.read_csv(fp, header=0, index_col=0)
         demand = cluster_data["value"].tolist()
         for i in range(len(demand)):
+            if (demand[i] == -1 and (i%24 != 0)): #first change all rows that aren't 6am
+                n = 1
+                m = 1
+                while(demand[i-(n*24)] == -1): n += 1
+                while(demand[i+(m*24)] == -1): m += 1
+                demand[i] = (demand[i-(n*24)] + demand[i+(m*24)]) / 2
+        for i in range(len(demand)):
             if ((demand[i] == -1) and (i%24 == 0)): #This is if the data is at 6am
-                demand[i] = (demand[i-1] + demand[i+1]) / 2
-            elif (demand[i] == -1):
-                demand[i] = (demand[i-24] + demand[i+24]) / 2
+                    demand[i] = (demand[i-1] + demand[i+1]) / 2
+        cluster_data["value"] = demand
+        cluster_data.to_csv(fp)
+
 
 
 if __name__ == "__main__":

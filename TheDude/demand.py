@@ -12,30 +12,20 @@ from keras.layers import LSTM
 from keras.layers import BatchNormalization
 import keras
 import matplotlib.pyplot as plt
-import csv
-import jinja2
 import settings
 import time
+from multiprocessing import Pool
 
-NUM_DATA_POINTS = "MAX" # MAX if using all data, integer if using some data
+NUM_DATA_POINTS = 1500 # MAX if using all data, integer if using some data
 NUM_EPOCHS = 100
 N_STEPS = 5
 NEW_DATA_AMOUNT = 168
-VERBOSE = 0
-PREDICTION_THRESHOLD = .04 # Percentage
+VERBOSE = 2
+PREDICTION_THRESHOLD = .11 # Percentage
 DEMAND_UNINIT = 42069
 # Dictionary key is cluster model path, value is list with [prediction accuracy, counter]
 cluster_predictions = {}
 TIME = []
-
-#compiles list of new demand data to refit on
-#ignores NULL elements
-def get_new_data(old_data, amount):
-    data = []
-    for i in range(-1*amount, -1):
-        if old_data[i] > 0:
-            data.append(old_data[i])
-    return data
 
 # Should be used by layer above to increment amount of time horizons that ML has predicted
 # rst set to true in order to reset after new data has been added into model
@@ -66,7 +56,6 @@ def split_sequence(sequence):
 def fit_model(model, df, points, model_location, n_tests):
     df = df.tail(n=points)
     values = df.loc[:,'value'].values
-    values = get_new_data(values, points)
     # split into samples
     X, y = split_sequence(values)
     # reshape into [samples, timesteps, features]
@@ -132,64 +121,66 @@ def compute_prediction(model_location, df):
 
     return ([current] + [th[i][0][0] for i in range(settings.DEMAND_TIME_HORIZONS)])
 
-#returns accuracy
-def test_demonstration(epoch):
-    CSV = "BuildingData2018_processed/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv"
-    j = 0
-    demand_data = pd.read_csv(CSV)
-    values = demand_data.loc[:, 'value'].values
+def test_demonstration(dir, demand_data):
     dates = []
     vals = []
     true_demand = []
     predicted_demand = []
-
     predicted_demand.append(100)
     lol = int(len(demand_data)/10)
-    generate_model(demand_data.head(n=lol), './Models/model1')
-    prev_pred = compute_prediction('./Models/model1', demand_data.head(n=(lol - 1)))[1]
+    generate_model(demand_data.head(n=lol), dir)
+    prev_pred = compute_prediction(dir, demand_data.head(n=(lol - 1)))[1]
     negative = 0 # How many predictions were underpredicted
     positive = 0 # How many of our predictions were overpredicted
     idx = []
     acc = 0
     for i in range(lol, lol * 2):
         new_demand_data = demand_data.head(n=i)
-        val = compute_prediction('./Models/model1', new_demand_data)
+        val = compute_prediction(dir, new_demand_data)
         if (val[0] > 10):
             vals.append(i)
             true_demand.append(val[0])
             dates.append(100 - (abs((prev_pred - val[0])) / val[0] * 100))
             acc += 1 - (abs((prev_pred - val[0])) / val[0])
             if((abs((prev_pred - val[0])) / val[0]) > PREDICTION_THRESHOLD):
-                print((100 - (abs((prev_pred - val[0])) / val[0] * 100)), val[0], prev_pred)
+                # print((100 - (abs((prev_pred - val[0])) / val[0] * 100)), val[0], prev_pred)
                 if((prev_pred - val[0]) < 0): negative += 1
                 else: positive += 1
             prev_pred = val[1]
             predicted_demand.append(val[1])
         else: idx.append(i)
-    print("Negative: ", negative)
-    print("Positive: ", positive)
+    # print("Negative: ", negative)
+    # print("Positive: ", positive)
     # figure, axis = plt.subplots(2, 1)
     # axis[0].plot([i for i in range(len(dates))], dates)
     # axis[1].plot([i for i in range(len(true_demand))], true_demand)
     # axis[1].plot([i for i in range(len(predicted_demand))], predicted_demand)
-    plt.savefig("matplotlib.png")
-    print(idx, acc/lol)
+    # plt.savefig("matplotlib.png")
+    # print(idx, acc/lol)
     return acc/lol
 
-#List of epochs
-#Specify number of epochs here
-epoch = list(range(50, 150))
-accuracies = []
+# test_demonstration('./Models/model1', pd.read_csv("BuildingData2018_processed/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv"))
 
-for i in epoch:
-    accuracy = test_demonstration(epoch)
-    accuracies.append(accuracy)
-    dir = './Models/model1'
-    for f in os.listdir(dir):
-        os.remove(os.path.join(dir, f))
-     
-plt.plot(epoch, accuracies)
-plt.set_xlabel("Epochs")
-plt.set_ylabel("Accuracy")
-    
-print(accuracies)
+# demand_data = pd.read_csv("BuildingData2018_processed/ADH_E_TBU_CD_1514786400000_1535778000000_hourly.csv")
+
+def helper_epoch_test(i):
+        global NUM_EPOCHS
+        NUM_EPOCHS = i
+        x = test_demonstration(f'./Models/model{i}', demand_data)
+        print(x, i)
+        return x, i
+
+def test_epochs():
+    acc = []
+    x = []
+    # with Pool() as p: acc, x = p.map(helper_epoch_test, range(50,150)) #run multiprocessing
+    for i in range(50, 150, 10): 
+        r = helper_epoch_test(i)
+        acc.append(r[0])
+        x.append(r[1])
+    print(acc)
+    print(x)
+    plt.xlabel("Number Epochs")
+    plt.ylabel("Accuracy")
+    plt.plot(x, acc)
+#test_epochs()    

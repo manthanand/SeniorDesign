@@ -7,8 +7,8 @@ import settings
 # CONSTANTS
 DEMAND_HORIZON_LENGTH = 5
 CSV_ENTRY_LENGTH = 15
-BATTERY_CAPACITY = 60000
-BATTERY_USE_RATIO = .7
+BATTERY_CAPACITY = 1000
+BATTERY_USE_RATIO = .2
 
 # Time each cluster will be on (highest to lowest) 0 indicates always powered
 TIME = [0,4,2]
@@ -54,9 +54,8 @@ def init(clusters):
     # initialize the csv file that stores the history of building power      
     headerset = []
     headerset.append("timestamp")
-    for cluster_set in PRIORITIES:
-        for item in cluster_set:
-            headerset.append(item.name)
+    for item in TOTAL_CLUSTERS:
+        headerset.append(item.name)
     headerset.append("Power Stored")
 
     data = [ [0]*len(headerset) for i in range(CSV_ENTRY_LENGTH)]
