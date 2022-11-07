@@ -16,11 +16,13 @@ clusters = pd.read_csv(settings.clusterfp)
 
 def init(start):
     for i, r in clusters.iterrows():
-        data = read_csv((glob.glob(settings.demandfp + r["Cluster"] + "*")[0]), header=0, index_col=0)
-        data = data.head(start)
-        demand.generate_model(
-            data, os.path.join(settings.modelfp, r["Cluster"]))
-    supply_ml.generate_model(start, settings.modelfp + "/Supply", supply_ml.supplyfp)
+        data_demand = read_csv((glob.glob(settings.demandfp + r["Cluster"] + "*")[0]), header=0, index_col=0)
+        data_demand = data_demand.head(start)
+        demand.generate_model(data_demand, os.path.join(settings.modelfp, r["Cluster"]))
+
+    data_supply = read_csv(settings.modelfp + "/Supply", index_col = 0)
+    data_supply = data_supply.head(start)
+    supply_ml.generate_model(data_supply, settings.supplyfp)
 
 # This function collects the current supply and demand for all clusters and stores them in "OutputData.csv" every 15 minutes
 # It uses input data from the folder InputData
@@ -52,15 +54,16 @@ def train(start):
     # Write Supply data to dataframe
     output.loc[len(output.index)] = (
                 ["Supply", "", "",] + 
-                ["" for i in range(settings.DEMAND_TIME_HORIZONS)] + 
+                ["" for i in range(settings.SUPPLY_TIME_HORIZONS)] + 
                 supply_ml.compute_prediction(settings.modelfp + '/Supply', read_csv((glob.glob(settings.supplyfp)[0])))
     )
     # Write Demand data to dataframe
     for i, r in clusters.iterrows():
-        data = read_csv((glob.glob(settings.demandfp + r["Cluster"] + "*")[0]), header=0, index_col=0)
-        data = data.head(start)
-        predictions = demand.compute_prediction(os.path.join(settings.modelfp, r["Cluster"]), data)
-        output.loc[len(output.index)] = ([r["Cluster"]] + [r["Priority"]] + predictions + [""] + ["" for i in range(settings.SUPPLY_TIME_HORIZONS)])
+        data_demand = read_csv((glob.glob(settings.demandfp + r["Cluster"] + "*")[0]), header=0, index_col=0)
+        data_demand = data_demand.head(start)
+        predictions = demand.compute_prediction(os.path.join(settings.modelfp, r["Cluster"]), data_demand)
+        output.loc[len(output.index)] = ([r["Cluster"]] + [r["Priority"]] + predictions + [""] + ["" for i in range(settings.DEMAND_TIME_HORIZONS)])
+    
     output.to_csv(settings.outputfp, encoding='utf-8', index=False)  # Write Dataframe to csv
 
 # train()

@@ -2,6 +2,7 @@
 from numpy import sqrt, asarray
 import pandas as pd
 from pandas import read_csv
+import tensorflow as tf
 from tensorflow import keras, math, reduce_mean
 from keras import Sequential
 from keras.layers import Dense, LSTM, BatchNormalization
@@ -12,16 +13,18 @@ import sys
 import random
 
 N_STEPS = 5
-SET_SIZE = 19
-TEST_PROPORTION = 6
+SET_SIZE = 21
+TEST_PROPORTION = 10
 NUM_DATA_POINTS = 1500 # MAX if using all data, integer if using some data
-NUM_EPOCHS = 100
+NUM_EPOCHS = 60
 NEW_DATA_AMOUNT = 168
 VERBOSE = 2
 PREDICTION_THRESHOLD = .11 # Percentage
 SUPPLY_UNINIT = 42069
 COUNTER = 0
 PREVIOUS_PREDICTION = 42069
+
+TIME = []
 # Dictionary key is cluster model path, value is list with [prediction accuracy, counter]
 
 # Should be used by layer above to increment amount of time horizons that ML has predicted
@@ -34,7 +37,7 @@ def wait_amount(model_location, rst, inc):
     return COUNTER
 
 # split a univariate sequence into samples
-def split_sequence(sequence, n_steps=5):
+def split_sequence(sequence, n_steps):
     X, y = list(), list()
     for i in range(len(sequence)):
     # find the end of this pattern
@@ -43,70 +46,76 @@ def split_sequence(sequence, n_steps=5):
         if end_ix > len(sequence)-1:
             break
         # gather input and output parts of the pattern
-        # filter this properly
-        # TODO: training on an irregular matrix
-        seq_x, seq_y = sequence[i:end_ix+1, :], sequence[end_ix, -1]
-        seq_x[-1, -1] = 0
+        seq_x, seq_y = sequence[i:end_ix], sequence[end_ix]
         X.append(seq_x)
         y.append(seq_y)
     return asarray(X), asarray(y)
 
-def generate_model(starting, model_location, csv):
-   df = read_csv(csv, index_col=0)
+def custom_loss(y_actual, y_pred):
+    SE_Tensor = math.square(y_pred - y_actual)  #squared difference
+    MSE = reduce_mean(SE_Tensor, axis=0)
+    #RMSE = tf.math.sqrt(MSE)
+    
+    Zeros = tf.zeros_like(MSE) #create tensor of zeros
+    Mask = [False] * SET_SIZE
+    Mask[-1] = True
 
-   df = df.drop(['year', 'day'], axis=1)
-   df_predictor = asarray(df.iloc[starting:starting + N_STEPS + 1]).reshape(1, N_STEPS + 1, SET_SIZE)
-   dataframeset = [df.iloc[:starting], df.iloc[starting + N_STEPS + 1:]]
-   df = pd.concat(dataframeset)
+    Solar_MSE = tf.where(Mask, MSE, Zeros) #create tensor where every loss is 0 except solar output
+    
+    #print_output = tf.print(Solar_MSE, "Solar_MSE: ")
+    
+    return Solar_MSE
 
-   # retrieve the values
-   values = df.values.astype('float32')
-   # specify the window size
-   # split into samples
-   X, y = split_sequence(values, N_STEPS)
-   # reshape into [samples, timesteps, features]
-   X = X.reshape((X.shape[0], X.shape[1], X.shape[2]))
-   # split into train/test
-   n_test = int(X.shape[0] / TEST_PROPORTION)
-   X_train, X_test, y_train, y_test = X[:-n_test], X[-n_test:], y[:-n_test], y[-n_test:]
+def custom_eval(y_actual, y_pred):
+    SE_Tensor = math.square(y_pred - y_actual)  #squared difference
+    MSE = reduce_mean(SE_Tensor, axis=0)
+    
+    Zeros = tf.zeros_like(MSE) #create tensor of zeros
+    Mask = [False] * SET_SIZE
+    Mask[-1] = True
 
-   callback = keras.callbacks.EarlyStopping(monitor='loss', patience=3)
-   model = Sequential()
-   model.add(BatchNormalization(input_shape=(N_STEPS + 1, len(df.iloc[0]))))
-   # LSTM to weight recency
-   model.add(LSTM(100, activation='relu', kernel_initializer='he_normal'))
-   # dense layers to regenerate spatiality
-   model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
-   model.add(Dense(25, activation='relu', kernel_initializer='he_normal'))
-   model.add(Dense(1, activation='tanh'))
-   # compile the model
-   model.compile(optimizer='adam', loss='mse', metrics=['mae'])
+    Solar_MSE = tf.where(Mask, MSE, Zeros) #create tensor where every loss is 0 except solar output
+    Solar_RMSE = tf.math.sqrt(Solar_MSE)
+    
+    #print_output = tf.print(Solar_RMSE, "Solar_RMSE: ")
+    
+    return Solar_RMSE
 
-   # fit the model
-   model.fit(X_train, y_train, epochs=100, batch_size=32, verbose=2, validation_data=(X_test, y_test),
-             callbacks=[callback])
-   model.save(model_location)
-
-def fit_model(model, df, points, model_location, n_tests):
+def fit_model(model, df, points, model_location):
     df = df.tail(n=points)
-    values = df.loc[:,'value'].values
+    values = df.loc[:].values.astype('float32')
     # split into samples
     X, y = split_sequence(values)
     # reshape into [samples, timesteps, features]
-    X = X.reshape((X.shape[0], X.shape[1], 1))
+    X = X.reshape((X.shape[0], X.shape[1], SET_SIZE))
+    n_test = int(X.shape[0] / TEST_PROPORTION)
     # split into train/test
-    x_train, x_test, y_train, y_test = X[:-n_tests], X[-n_tests:], y[:-n_tests], y[-n_tests:]
+    X_train, X_test, y_train, y_test = X[:-n_test], X[-n_test:], y[:-n_test], y[-n_test:]
     # fit the model
     time1 = time.time()
-    model.compile(optimizer='adam', loss='mse', metrics=['mae'], run_eagerly=True)
-    little_x = model.fit(x_train, y_train, epochs=NUM_EPOCHS, batch_size=32, verbose=VERBOSE, validation_data=(x_test, y_test))
-    little_x.model.save(model_location)
-    return x_test, y_test, little_x
+    model.compile(optimizer='adam', loss=custom_loss, metrics=[custom_eval])
+    little_X = model.fit(X_train, y_train, epochs=NUM_EPOCHS, batch_size=32, verbose=VERBOSE, validation_data=(X_test, y_test))
+    TIME.append(time.time() - time1)
+    little_X.model.save(model_location)
+    return X_test, y_test, little_X
 
+def generate_model(df, model_location):
+    model = Sequential()
+    model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS,SET_SIZE)))
+    model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
+    model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
+    model.add(Dense(1))
+    # compile the model
+    model.compile(optimizer='adam', loss=custom_loss, metrics=[custom_eval])
+
+    # fit the model
+    x,y,model = fit_model(model, df, len(df) if (NUM_DATA_POINTS == "MAX") else NUM_DATA_POINTS, settings.supplyfp, int(df.shape[0] / TEST_PROPORTION))
+    model.save(model_location)
 
 def compute_prediction(model_location, df):
     global PREVIOUS_PREDICTION
-    values = (df.loc[:,'value'].values).tolist()
+    # reading list of values
+    values = (df.loc[:,'value'].values.astype('float32')).tolist()
     current = values[len(values) - 1]
     th = []
     current_amount = wait_amount(model_location, False, True)
