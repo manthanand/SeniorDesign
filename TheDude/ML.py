@@ -50,10 +50,11 @@ def train(start):
         weather_df = pd.read_csv(weathercsv)  # use old one if cant read from url
 
     # Write Supply data to dataframe
+    returnval = supply_ml.compute_prediction(settings.modelfp + "Supply", read_csv((glob.glob(settings.supplyfp)[0]), header=0, index_col=0).head(start))
     output.loc[len(output.index)] = (
                 ["Supply", "", "",] + 
-                ["" for i in range(settings.SUPPLY_TIME_HORIZONS)] +
-                supply_ml.compute_prediction(settings.modelfp + "Supply", read_csv((glob.glob(settings.supplyfp)[0])).head(start))
+                ["" for i in range(settings.DEMAND_TIME_HORIZONS)] +
+                returnval
     )
     # Write Demand data to dataframe
     for i, r in clusters.iterrows():

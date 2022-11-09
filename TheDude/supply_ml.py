@@ -94,19 +94,20 @@ def custom_eval(y_actual, y_pred):
     return Solar_RMSE
 
 def generate_model(starting, model_location, csv):
-    '''df = pd.read_csv(csv, index_col=0)
+    '''
+    df = pd.read_csv(csv, index_col=0)
     df = df.head(n=starting)
     column_mean = []
     column_std = []
-    pastWeatherAndSupply = df.iloc[:-2].drop(['year', 'day'], axis=1)
+    pastWeatherAndSupply = df.iloc[:-2]
 
     currentWeather = df.iloc[-2]
-    currentWeather = currentWeather.drop(['Percent Output', 'year', 'day'])  # dropping supply column for testing
-    currentWeather = currentWeather.values[:].reshape((1, len(df.iloc[-2]) - 3))
+    currentWeather = currentWeather.drop(['Percent Output'])  # dropping supply column for testing
+    currentWeather = currentWeather.values[:].reshape((1, len(df.iloc[-2]) - 1))
 
     nextHourWeather = df.iloc[-1]
-    nextHourWeather = nextHourWeather.drop(['Percent Output', 'year', 'day'])  # dropping supply column for testing
-    nextHourWeather = nextHourWeather.values[:].reshape((1, len(df.iloc[-1]) - 3))
+    nextHourWeather = nextHourWeather.drop(['Percent Output'])  # dropping supply column for testing
+    nextHourWeather = nextHourWeather.values[:].reshape((1, len(df.iloc[-1]) - 1))
     X, y = pastWeatherAndSupply.values[:, :-1], pastWeatherAndSupply.values[:, -1]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.35)
     print(X_train.shape, X_test.shape, y_train.shape, y_test.shape)
@@ -121,6 +122,7 @@ def generate_model(starting, model_location, csv):
     model.compile(optimizer='adam', loss='mse')
     model.fit(X_train, y_train, epochs=80, batch_size=10)
     model.save(model_location)'''
+
     df = read_csv(csv, index_col=0)
     df = df.head(n=starting)
     # df_holdout = df.iloc[-PREDICTION_SET_SIZE:]
@@ -170,51 +172,52 @@ def fit_model(model, df, points, model_location, n_tests):
 
 
 def compute_prediction(model_location, df):
-
-    # global PREVIOUS_PREDICTION
-    # # values = (df.loc[:,'value'].values).tolist()
-    current = df.tail(1)
-    operate_current = current
-    th = []
-    # current_amount = wait_amount(model_location, False, True)
-    # update = (current_amount == NEW_DATA_AMOUNT - 1)
-    predict_model = keras.models.load_model(model_location, custom_objects={"custom_eval": custom_eval, "custom_loss": custom_loss})#this is copy that will be used to make predictions
-    #TODO
-    #This should be put into power world / Kara's thing later rather than calling .predict
-    for i in range(settings.SUPPLY_TIME_HORIZONS):
-        operate_current, y = split_sequence(df[-N_STEPS - 1:].values.astype('float32'), N_STEPS)
-        # operate_current = operate_current.reshape((21, operate_current.shape[1], 21))
-        # operate_current = df[-N_STEPS:].values.astype('float32')
-        # x = list()
-        # x.append(operate_current)
-        prediction = predict_model.predict(operate_current, verbose=VERBOSE)
-        # th.append(prediction)
-        # df.append(prediction)
-    # accuracy = 1
-    # # Update if batch size reached or predictions become inaccurate
-    # if (PREVIOUS_PREDICTION == SUPPLY_UNINIT):
-    #     PREVIOUS_PREDICTION = th[0][0][0]
-    # else:
-    #     accuracy = abs((PREVIOUS_PREDICTION - current) / current)
-    #     PREVIOUS_PREDICTION = th[0][0][0]
-    #
-    # # current_amount = wait_amount(model_location, False, True)
-    # # Update if batch size reached or predictions become inaccurate
-    # if (COUNTER == (NEW_DATA_AMOUNT - 1)) or ((accuracy < PREDICTION_THRESHOLD) and (wait_amount(model_location, False, False) > (2 * 5))):
-    #     # validate on past 5 hours of data for refitting model
-    #     wait_amount(model_location, True, False)
-    #     fit_model(predict_model, df, current_amount, model_location, 5)
-    # final_array = ([current] + [th[i][0][0] for i in range(settings.SUPPLY_TIME_HORIZONS)])
-    return prediction
+        # global PREVIOUS_PREDICTION
+        # # values = (df.loc[:,'value'].values).tolist()
+        current = df['Percent Output'].values[-1]
+        operate_current = current
+        th = []
+        # current_amount = wait_amount(model_location, False, True)
+        # update = (current_amount == NEW_DATA_AMOUNT - 1)
+        predict_model = keras.models.load_model(model_location, custom_objects={"custom_eval": custom_eval, "custom_loss": custom_loss})#this is copy that will be used to make predictions
+        #TODO
+        #This should be put into power world / Kara's thing later rather than calling .predict
+        for i in range(settings.SUPPLY_TIME_HORIZONS):
+            operate_current, y = split_sequence(df[-N_STEPS - 1:].values.astype('float32'), N_STEPS)
+            # operate_current = operate_current.reshape((21, operate_current.shape[1], 21))
+            # operate_current = df[-N_STEPS:].values.astype('float32')
+            # x = list()
+            # x.append(operate_current)
+            prediction = predict_model.predict(operate_current, verbose=VERBOSE)
+            # th.append(prediction)
+            # df.append(prediction)
+        # accuracy = 1
+        # # Update if batch size reached or predictions become inaccurate
+        # if (PREVIOUS_PREDICTION == SUPPLY_UNINIT):
+        #     PREVIOUS_PREDICTION = th[0][0][0]
+        # else:
+        #     accuracy = abs((PREVIOUS_PREDICTION - current) / current)
+        #     PREVIOUS_PREDICTION = th[0][0][0]
+        #
+        # # current_amount = wait_amount(model_location, False, True)
+        # # Update if batch size reached or predictions become inaccurate
+        # if (COUNTER == (NEW_DATA_AMOUNT - 1)) or ((accuracy < PREDICTION_THRESHOLD) and (wait_amount(model_location, False, False) > (2 * 5))):
+        #     # validate on past 5 hours of data for refitting model
+        #     wait_amount(model_location, True, False)
+        #     fit_model(predict_model, df, current_amount, model_location, 5)
+        # final_array = ([current] + [th[i][0][0] for i in range(settings.SUPPLY_TIME_HORIZONS)])
+        LUT = pd.read_csv(settings.lookuptable)['P Output [MW]']
+        x = [LUT[abs(current*1000).round()]*1000, LUT[abs(prediction[0][0]*1000).round()]*1000]
+        return x
 
 '''    currentWeather = df.iloc[-2]
-    currentWeather = currentWeather.drop(['Percent Output', 'year', 'day'])  # dropping supply column for testing
-    currentWeather = currentWeather.values[:].reshape((1, len(df.iloc[-2]) - 3))
+    currentWeather = currentWeather.drop(['Percent Output'])  # dropping supply column for testing
+    currentWeather = currentWeather.values[:].reshape((1, len(df.iloc[-2]) - 1))
 
     nextHourWeather = df.iloc[-1]
-    nextHourWeather = nextHourWeather.drop(['Percent Output', 'year', 'day'])  # dropping supply column for testing
-    nextHourWeather = nextHourWeather.values[:].reshape((1, len(df.iloc[-1]) - 3))
-    model = keras.models.load_model(model_location, custom_objects={"custom_eval": custom_eval, "custom_loss": custom_loss})#this is copy that will be used to make predictions
+    nextHourWeather = nextHourWeather.drop(['Percent Output'])  # dropping supply column for testing
+    nextHourWeather = nextHourWeather.values[:].reshape((1, len(df.iloc[-1]) - 1))
+    model = keras.models.load_model(model_location)#this is copy that will be used to make predictions
     current_prediction = model.predict(currentWeather)
     if (current_prediction < 0):
         current_prediction = 0
