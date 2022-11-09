@@ -33,7 +33,7 @@ PREDICTION_THRESHOLD = .11 # Percentage
 SUPPLY_UNINIT = 42069
 COUNTER = 0
 PREVIOUS_PREDICTION = 42069
-PREDICTION_SET_SIZE = 580
+PREDICTION_SET_SIZE = 100
 N_TEST = 50
 # Dictionary key is cluster model path, value is list with [prediction accuracy, counter]
 
@@ -123,7 +123,8 @@ def generate_model(starting, model_location, csv):
     model.save(model_location)'''
     df = read_csv(csv, index_col=0)
     df = df.head(n=starting)
-    # df_holdout = df.iloc[-PREDICTION_SET_SIZE:]
+    df_holdout = df.iloc[-PREDICTION_SET_SIZE:]
+    df = df.iloc[:-PREDICTION_SET_SIZE]
 
     # holdout_X, holdout_y = split_sequence(df_holdout.values.astype('float32'), N_STEPS)
     # retrieve the values
@@ -131,7 +132,8 @@ def generate_model(starting, model_location, csv):
     # # specify the window size
     # n_steps = 5
     # split into samples
-    X, y = split_sequence(values, N_STEPS)
+    X, y = values[:, :-1], values[:, -1]
+    X = X.reshape(X.shape[0],1,X.shape[1])
     # reshape into [samples, timesteps, features]
     # holdout_X = holdout_X.reshape((holdout_X.shape[0], holdout_X.shape[1], 21))
     # split into train/test
@@ -141,7 +143,7 @@ def generate_model(starting, model_location, csv):
     # define model
     # improvement area : try adding dropout
     model = Sequential()
-    model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS, 18)))
+    model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(1, 17)))
     model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
     model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
     model.add(Dense(1))
@@ -182,7 +184,9 @@ def compute_prediction(model_location, df):
     #TODO
     #This should be put into power world / Kara's thing later rather than calling .predict
     for i in range(settings.SUPPLY_TIME_HORIZONS):
-        operate_current, y = split_sequence(df[-N_STEPS - 1:].values.astype('float32'), N_STEPS)
+        operate_current = asarray(df.iloc[100])[1:-1]
+        operate_current = operate_current.reshape(operate_current.shape[1],1,17)
+        # operate_current, y = split_sequence(df[-N_STEPS - 1:].values.astype('float32'), N_STEPS)
         # operate_current = operate_current.reshape((21, operate_current.shape[1], 21))
         # operate_current = df[-N_STEPS:].values.astype('float32')
         # x = list()
