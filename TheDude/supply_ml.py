@@ -11,6 +11,7 @@ from tensorflow import math
 from tensorflow import reduce_mean
 import tensorflow as tf
 import settings
+import glob
 import sys
 from matplotlib import pyplot as plt
 import pandas as pd
@@ -118,7 +119,7 @@ def generate_model(starting, model_location, csv):
     model.compile(optimizer='adam', loss=custom_loss, metrics=[custom_eval])
     # model.compile(optimizer='adam', loss='mse', metrics=[custom_eval])
     # fit the model
-    model.fit(X_train, y_train, epochs=300, batch_size=32, verbose=2, validation_data=(X_test, y_test))
+    model.fit(X_train, y_train, epochs=NUM_EPOCHS, batch_size=32, verbose=2, validation_data=(X_test, y_test))
     model.save(model_location)
 
 def fit_model(model, df, points, model_location, n_tests):
@@ -132,7 +133,7 @@ def fit_model(model, df, points, model_location, n_tests):
     x_train, x_test, y_train, y_test = X[:-n_tests], X[-n_tests:], y[:-n_tests], y[-n_tests:]
     # fit the model
     time1 = time.time()
-    model.compile(optimizer='adam', loss='mse', metrics=['mae'], run_eagerly=True)
+    model.compile(optimizer='adam', loss=custom_loss, metrics=[custom_eval])
     little_x = model.fit(x_train, y_train, epochs=NUM_EPOCHS, batch_size=32, verbose=VERBOSE, validation_data=(x_test, y_test))
     little_x.model.save(model_location)
     return x_test, y_test, little_x
@@ -141,18 +142,20 @@ def fit_model(model, df, points, model_location, n_tests):
 def compute_prediction(model_location, df):
     # global PREVIOUS_PREDICTION
     # # values = (df.loc[:,'value'].values).tolist()
-    current = df.iloc[-1]
+    current = df.tail(1)
+    operate_current = current
     th = []
     # current_amount = wait_amount(model_location, False, True)
     # update = (current_amount == NEW_DATA_AMOUNT - 1)
-    predict_model = keras.models.load_model(model_location, compile=False)#this is copy that will be used to make predictions
+    predict_model = keras.models.load_model(model_location, custom_objects={"custom_eval": custom_eval, "custom_loss": custom_loss}, compile=False)#this is copy that will be used to make predictions
     #TODO
     #This should be put into power world / Kara's thing later rather than calling .predict
     for i in range(settings.SUPPLY_TIME_HORIZONS):
-        lol = df[-N_STEPS:]
-        row = asarray(df[-N_STEPS:]).reshape((1, N_STEPS, 1))
-        th.append(predict_model.predict(row, verbose=VERBOSE))
-        df.append(th[i][0][0])
+        operate_current, y = split_sequence(df[-N_STEPS - 1:].values.astype('float32'), N_STEPS)
+        operate_current = operate_current.reshape((operate_current.shape[0], operate_current.shape[1], 21))
+        prediction = predict_model.predict(operate_current, verbose=VERBOSE)
+        th.append(prediction)
+        df.append(prediction)
     # accuracy = 1
     # # Update if batch size reached or predictions become inaccurate
     # if (PREVIOUS_PREDICTION == SUPPLY_UNINIT):
@@ -167,7 +170,9 @@ def compute_prediction(model_location, df):
     #     # validate on past 5 hours of data for refitting model
     #     wait_amount(model_location, True, False)
     #     fit_model(predict_model, df, current_amount, model_location, 5)
-    final_array = ([current] + [th[i][0][0] for i in range(settings.SUPPLY_TIME_HORIZONS)])
-    return final_array
+    # final_array = ([current] + [th[i][0][0] for i in range(settings.SUPPLY_TIME_HORIZONS)])
+    return prediction
+
+
 
 
