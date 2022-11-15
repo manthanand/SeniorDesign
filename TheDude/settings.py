@@ -1,5 +1,3 @@
-import os.path
-
 demandfp = "BuildingData2018_processed/"
 dmodelfp = "BuildingData2018_processed/Models/"
 clusterfp = "BuildingData2018_processed/ClusterList.csv"

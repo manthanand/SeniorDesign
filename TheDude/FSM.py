@@ -11,21 +11,15 @@ BATTERY_USE_RATIO_3 = .7
 
 # Time each cluster will be on (highest to lowest) 0 indicates always powered
 TIME = [0,4,2]
-
 powered_clusters = []
-
 TOTAL_CLUSTERS = []
-
 P1 = []
 P2 = []
 P3 = []
-
 total_battery = 0
-
 run_count = 0
 
 # List of clusters with varying priorities
-
 PRIORITIES = [P1, P2, P3]
 class cluster:
     def __init__(self,name_item,priority_item):
@@ -51,16 +45,9 @@ def init(clusters):
     PRIORITIES = [P1, P2, P3]
 
     # initialize the csv file that stores the history of building power      
-    headerset = []
-    headerset.append("timestamp")
-    for item in TOTAL_CLUSTERS:
-        headerset.append(item.name)
-    headerset.append("Power Stored")
-
+    headerset = ["timestamp"] + [item.name for item in TOTAL_CLUSTERS] + ["Power Stored"]
     data = [ [0]*len(headerset) for i in range(CSV_ENTRY_LENGTH)]
-
-    powered_cluster_writer = pd.DataFrame(data, columns=headerset)
-    powered_cluster_writer.to_csv(settings.powerreqscsv, index=False)
+    pd.DataFrame(data, columns=headerset).to_csv(settings.powerreqscsv, index=False)
 
 def reset():
     run_count = 0
@@ -86,19 +73,11 @@ def verify_horizon_compatibility(supply_horizon, demand_horizon, battery_power =
     return True, battery_power
 
 def clear_lower_priorities(level, list_of_clusters):
-    preserve_list = []
-    for item in list_of_clusters:
-        if item.priority < level:
-            preserve_list.append(item)
-    
-    return preserve_list
+    return [item for item in list_of_clusters if item.priority < level]
 
 def cluster_writer(list_of_clusters, storage_value, timestamp):
     powered_cluster_set = pd.read_csv(settings.powerreqscsv, index_col=False)
-
-    new_entry = [0] * int(len(TOTAL_CLUSTERS) + 2)
-    new_entry[0] = timestamp
-    new_entry[-1] = storage_value
+    new_entry = [timestamp] + [0 for i in range(len(TOTAL_CLUSTERS))] + [storage_value]
 
     for item in list_of_clusters:
         spot = TOTAL_CLUSTERS.index(item)
@@ -113,8 +92,7 @@ def cluster_reader(filepath):
     reading_item = pd.read_csv(filepath)
     remaining_supply_horizon = reading_item.iloc[0][7:].tolist()
 
-    i = 1
-    while i in range(len(reading_item)):
+    for i in range(1, len(reading_item)):
         cluster_name = reading_item.iloc[i][0]
         demand_horizon=reading_item.iloc[i][2:7].tolist()
         update_record(PRIORITIES, cluster_name, demand_horizon)
@@ -133,18 +111,10 @@ def set_timeon_standard(priority_list):
     return -1 if matched_timeons else standard_value
 
 def pointwise_subtraction(list1, list2):
-    list3 = []
-    for i in range(len(list1)):
-        list3.append(list1[i] - list2[i])
-
-    return list3
+    return [list1[i] - list2[i] for i in range(len(list1))]
 
 def pointwise_addition(list1, list2):
-    list3 = []
-    for i in range(len(list1)):
-        list3.append(list1[i] + list2[i])
-
-    return list3
+    return [list1[i] + list2[i] for i in range(len(list1))]
 
 # this function should be called every time step. However, depending on how many time steps constitute each time horizon
 # some details on implementation may be slightly different.
@@ -157,11 +127,9 @@ def fsm():
     global run_count
     global total_battery
     global powered_clusters
-    for item in powered_clusters:
-            item.increment_timeon()
+    for item in powered_clusters: item.increment_timeon()
 
     remaining_supply_horizon = cluster_reader(settings.outputfp)
-
     '''
     P1 SETUP ---------------------
     '''
@@ -169,15 +137,9 @@ def fsm():
     P1_demand = [0] * DEMAND_HORIZON_LENGTH
 
     # calculate the total P1 demand and remove P1 clusters from the list of clusters that should be powered, temporarily
-    for item in P1:
-        P1_demand = pointwise_addition(P1_demand, item.demand_horizon)
+    for item in P1: P1_demand = pointwise_addition(P1_demand, item.demand_horizon)
 
-    preserve_list = []
-    for item in powered_clusters:
-        if item not in P1:
-            preserve_list.append(item)
-
-    powered_clusters = preserve_list
+    powered_clusters = [item for item in powered_clusters if item not in P1]
 
     # if you can power all the P1 clusters, do so and continue
     # if not, exit the function and return the list of clusters that should be powered
@@ -197,7 +159,6 @@ def fsm():
         cluster_writer(powered_clusters, remaining_supply_horizon[0], run_count)
         run_count += 1
         return 1
-    
     
     '''
     P2 and P3 SETUP ---------------------
@@ -234,7 +195,7 @@ def fsm():
                     if use_battery_2: total_battery = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)[1]
                     remaining_supply_horizon = pointwise_subtraction(remaining_supply_horizon, item.demand_horizon)
                     ran_out = False
-                    break                    # if all items in the list were checked and none could be picked, then ran_out continues to be true
+                    break # if all items in the list were checked and none could be picked, then ran_out continues to be true
 
             # ditto for P3. if you couldnt power a P2 cluster, don't power a P3 clusters
             if not ran_out:
@@ -243,7 +204,6 @@ def fsm():
                         functional_item = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)[0]
                     else:
                         functional_item = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon)[0]
-                    
                     if functional_item and (tier3standard == -1 or item.timeon < tier3standard) and item not in powered_clusters:
                         powered_clusters.append(item)
                         if use_battery_3: total_battery = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)[1]
@@ -260,14 +220,11 @@ def fsm():
         power_P3_clusters = True
         # this stores the total demand horizon of the P2 clusters
         P2_used = [0] * DEMAND_HORIZON_LENGTH
-
         tier3standard = set_timeon_standard(P3)
-
         # two cases:
             # the P2 clusters are sustainable if no additional P3 clusters are powered
             # the P2 clusters are not sustainable
-
-        # if the latter, cut power to all P2 clusters in preparation for severe issues
+                # if so, cut power to all P2 clusters in preparation for severe issues
         P2_count = 0
         for item in powered_clusters:
             if item in P2:

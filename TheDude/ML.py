@@ -1,5 +1,4 @@
 # This library is in charge of collecting data, training the ML algorithm, and making predictions
-
 import settings
 from bs4 import BeautifulSoup
 import requests
