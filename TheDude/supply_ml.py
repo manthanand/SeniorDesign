@@ -1,4 +1,3 @@
-from numpy import sqrt
 import keras
 from numpy import asarray
 from pandas import read_csv
@@ -6,41 +5,17 @@ from keras import Sequential
 from keras.layers import Dense
 from keras.layers import LSTM
 import time
-from datetime import datetime
 from tensorflow import math
 from tensorflow import reduce_mean
 import tensorflow as tf
 import settings
-import glob
-import sys
-from matplotlib import pyplot as plt
-import pandas as pd
-import numpy as np
 
 N_STEPS = 5
-SET_SIZE = 19
-TEST_PROPORTION = 6
-NUM_DATA_POINTS = 1500 # MAX if using all data, integer if using some data
 NUM_EPOCHS = 100
 NEW_DATA_AMOUNT = 168
 VERBOSE = 2
-PREDICTION_THRESHOLD = .11 # Percentage
-SUPPLY_UNINIT = 42069
-COUNTER = 0
-PREVIOUS_PREDICTION = 42069
 PREDICTION_SET_SIZE = 580
 N_TEST = 50
-PREDICTION_SET_SIZE = 580
-# Dictionary key is cluster model path, value is list with [prediction accuracy, counter]
-
-# Should be used by layer above to increment amount of time horizons that ML has predicted
-# rst set to true in order to reset after new data has been added into model
-# inc set to true to increment counter, false to just return value of counter
-def wait_amount(model_location, rst, inc):
-    global COUNTER
-    if rst: COUNTER = 0 #Set counter to 0
-    elif inc: COUNTER += 1
-    return COUNTER
 
 # split a univariate sequence into samples
 def split_sequence(sequence, n_steps):
@@ -65,29 +40,19 @@ def custom_loss(y_actual, y_pred):
     # RMSE = tf.math.sqrt(MSE)
 
     Zeros = tf.zeros_like(MSE)  # create tensor of zeros
-    Mask = [False, False, False, False, False, False, False, False, False, False,
-            False, False, False, False, False, False, False, False, False, False, True]  # create mask
-    Solar_MSE = tf.where(Mask, MSE, Zeros)  # create tensor where every loss is 0 except solar output
-
-    # print_output = tf.print(Solar_MSE, "Solar_MSE: ")
-
-    return Solar_MSE
-
+    Mask = [False for i in range(20)] + [True]  # create mask
+    return tf.where(Mask, MSE, Zeros)  # create tensor where every loss is 0 except solar output
 
 def custom_eval(y_actual, y_pred):
     SE_Tensor = math.square(y_pred - y_actual)  # squared difference
     MSE = reduce_mean(SE_Tensor, axis=0)
 
     Zeros = tf.zeros_like(MSE)  # create tensor of zeros
-    Mask = [False, False, False, False, False, False, False, False, False, False,
-            False, False, False, False, False, False, False, False, False, False, True]  # create mask
+    Mask = [False for i in range(20)] + [True]  # create mask
     Solar_MSE = tf.where(Mask, MSE, Zeros)  # create tensor where every loss is 0 except solar output
 
-    Solar_RMSE = tf.math.sqrt(Solar_MSE)
+    return tf.math.sqrt(Solar_MSE)
 
-    # print_output = tf.print(Solar_RMSE, "Solar_RMSE: ")
-
-    return Solar_RMSE
 
 def generate_model(starting, model_location, csv):
     df = read_csv(csv, index_col=0)
@@ -140,39 +105,16 @@ def fit_model(model, df, points, model_location, n_tests):
 
 
 def compute_prediction(model_location, df):
-    # global PREVIOUS_PREDICTION
-    # # values = (df.loc[:,'value'].values).tolist()
     current = df.tail(1)
     operate_current = current
     th = []
-    # current_amount = wait_amount(model_location, False, True)
-    # update = (current_amount == NEW_DATA_AMOUNT - 1)
-    predict_model = keras.models.load_model(model_location, custom_objects={"custom_eval": custom_eval, "custom_loss": custom_loss}, compile=False)#this is copy that will be used to make predictions
-    #TODO
-    #This should be put into power world / Kara's thing later rather than calling .predict
+    predict_model = keras.models.load_model(model_location, 
+        custom_objects={"custom_eval": custom_eval, "custom_loss": custom_loss}, 
+        compile=False)#this is copy that will be used to make predictions
     for i in range(settings.SUPPLY_TIME_HORIZONS):
         operate_current, y = split_sequence(df[-N_STEPS - 1:].values.astype('float32'), N_STEPS)
         operate_current = operate_current.reshape((operate_current.shape[0], operate_current.shape[1], 21))
         prediction = predict_model.predict(operate_current, verbose=VERBOSE)
         th.append(prediction)
         df.append(prediction)
-    # accuracy = 1
-    # # Update if batch size reached or predictions become inaccurate
-    # if (PREVIOUS_PREDICTION == SUPPLY_UNINIT):
-    #     PREVIOUS_PREDICTION = th[0][0][0]
-    # else:
-    #     accuracy = abs((PREVIOUS_PREDICTION - current) / current)
-    #     PREVIOUS_PREDICTION = th[0][0][0]
-    #
-    # # current_amount = wait_amount(model_location, False, True)
-    # # Update if batch size reached or predictions become inaccurate
-    # if (COUNTER == (NEW_DATA_AMOUNT - 1)) or ((accuracy < PREDICTION_THRESHOLD) and (wait_amount(model_location, False, False) > (2 * 5))):
-    #     # validate on past 5 hours of data for refitting model
-    #     wait_amount(model_location, True, False)
-    #     fit_model(predict_model, df, current_amount, model_location, 5)
-    # final_array = ([current] + [th[i][0][0] for i in range(settings.SUPPLY_TIME_HORIZONS)])
     return prediction
-
-
-
-

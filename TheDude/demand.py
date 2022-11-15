@@ -1,20 +1,12 @@
-import pandas as pd
-from datetime import datetime
-import math
 import os
-from numpy import concatenate
-from numpy import sqrt
 from numpy import asarray
-from pandas import read_csv
 from keras import Sequential
-from keras.layers import Dense
 from keras.layers import LSTM
-from keras.layers import BatchNormalization
+from keras.layers import Dense
 import keras
 import matplotlib.pyplot as plt
 import settings
 import time
-from multiprocessing import Pool
 
 NUM_DATA_POINTS = 1500 # MAX if using all data, integer if using some data
 NUM_EPOCHS = 100

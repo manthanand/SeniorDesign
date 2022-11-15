@@ -1,7 +1,5 @@
 from __future__ import print_function
-import csv
 import pandas as pd
-import clmath
 import settings
 
 # CONSTANTS
@@ -77,7 +75,7 @@ def update_record(list_of_list_of_clusters, cluster_name, demand_horizon):
                 break
 
 def verify_horizon_compatibility(supply_horizon, demand_horizon, battery_power = 0):
-    list3 = clmath.pointwise_subtraction(supply_horizon, demand_horizon)
+    list3 = pointwise_subtraction(supply_horizon, demand_horizon)
     original_battery = battery_power
     for i in list3:
         if i < 0 and i + battery_power > 0:
@@ -134,6 +132,20 @@ def set_timeon_standard(priority_list):
 
     return -1 if matched_timeons else standard_value
 
+def pointwise_subtraction(list1, list2):
+    list3 = []
+    for i in range(len(list1)):
+        list3.append(list1[i] - list2[i])
+
+    return list3
+
+def pointwise_addition(list1, list2):
+    list3 = []
+    for i in range(len(list1)):
+        list3.append(list1[i] + list2[i])
+
+    return list3
+
 # this function should be called every time step. However, depending on how many time steps constitute each time horizon
 # some details on implementation may be slightly different.
 
@@ -158,7 +170,7 @@ def fsm():
 
     # calculate the total P1 demand and remove P1 clusters from the list of clusters that should be powered, temporarily
     for item in P1:
-        P1_demand = clmath.pointwise_addition(P1_demand, item.demand_horizon)
+        P1_demand = pointwise_addition(P1_demand, item.demand_horizon)
 
     preserve_list = []
     for item in powered_clusters:
@@ -171,7 +183,7 @@ def fsm():
     # if not, exit the function and return the list of clusters that should be powered
     if verify_horizon_compatibility(remaining_supply_horizon, P1_demand, total_battery)[0]:
         total_battery = verify_horizon_compatibility(remaining_supply_horizon, P1_demand, total_battery)[1]
-        remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, P1_demand)
+        remaining_supply_horizon = pointwise_subtraction(remaining_supply_horizon, P1_demand)
         if remaining_supply_horizon[0] < 0: remaining_supply_horizon[0] = 0
         for item in P1:
             powered_clusters.append(item)
@@ -179,7 +191,7 @@ def fsm():
         for item in P1:
             if verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)[0]:
                 total_battery = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)[1]
-                remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, item.demand_horizon)
+                remaining_supply_horizon = pointwise_subtraction(remaining_supply_horizon, item.demand_horizon)
                 if remaining_supply_horizon[0] < 0: remaining_supply_horizon[0] = 0
                 powered_clusters.append(item)
         cluster_writer(powered_clusters, remaining_supply_horizon[0], run_count)
@@ -220,7 +232,7 @@ def fsm():
                 if functional_item and (tier2standard == -1 or item.timeon < tier2standard) and item not in powered_clusters:
                     powered_clusters.append(item)
                     if use_battery_2: total_battery = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)[1]
-                    remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, item.demand_horizon)
+                    remaining_supply_horizon = pointwise_subtraction(remaining_supply_horizon, item.demand_horizon)
                     ran_out = False
                     break                    # if all items in the list were checked and none could be picked, then ran_out continues to be true
 
@@ -235,7 +247,7 @@ def fsm():
                     if functional_item and (tier3standard == -1 or item.timeon < tier3standard) and item not in powered_clusters:
                         powered_clusters.append(item)
                         if use_battery_3: total_battery = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)[1]
-                        remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, item.demand_horizon)
+                        remaining_supply_horizon = pointwise_subtraction(remaining_supply_horizon, item.demand_horizon)
                         ran_out = False
                         break
                 
@@ -259,7 +271,7 @@ def fsm():
         P2_count = 0
         for item in powered_clusters:
             if item in P2:
-                P2_used = clmath.pointwise_addition(P2_used, item.demand_horizon)
+                P2_used = pointwise_addition(P2_used, item.demand_horizon)
                 P2_count += 1
 
         powered_clusters = clear_lower_priorities(3, powered_clusters)
@@ -270,7 +282,7 @@ def fsm():
             powered_clusters = clear_lower_priorities(2, powered_clusters)
         else:
             total_battery = verify_horizon_compatibility(remaining_supply_horizon, P2_used, total_battery)[1]
-            remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, P2_used)
+            remaining_supply_horizon = pointwise_subtraction(remaining_supply_horizon, P2_used)
             if remaining_supply_horizon[0] < 0: remaining_supply_horizon[0] = 0
         
         i = 0
@@ -292,7 +304,7 @@ def fsm():
                     if functional_item and (tier3standard == -1 or item.timeon < tier3standard) and item not in powered_clusters:
                         powered_clusters.append(item)
                         if use_battery_3: total_battery = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)[1]
-                        remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, item.demand_horizon)
+                        remaining_supply_horizon = pointwise_subtraction(remaining_supply_horizon, item.demand_horizon)
                         ran_out = False
                         i += 1
                         break
@@ -305,23 +317,23 @@ def fsm():
 
         # accumulate the total power used by P2 and ensure that those clusters can still be powered
         for item in powered_clusters:
-            if item in P2: P2_used = clmath.pointwise_addition(P2_used, item.demand_horizon)
-            if item in P3: P3_used = clmath.pointwise_addition(P3_used, item.demand_horizon)
+            if item in P2: P2_used = pointwise_addition(P2_used, item.demand_horizon)
+            if item in P3: P3_used = pointwise_addition(P3_used, item.demand_horizon)
 
         # if remaining_supply_horizon can't support P2_used, clear all P2 and P3 clusters out of the powered list
         if not verify_horizon_compatibility(remaining_supply_horizon, P2_used, total_battery)[0]:
             powered_clusters = clear_lower_priorities(2, powered_clusters)
             powered_clusters = clear_lower_priorities(3, powered_clusters)
-        elif not verify_horizon_compatibility(clmath.pointwise_subtraction(remaining_supply_horizon, P2_used), P3_used, total_battery)[0]:
+        elif not verify_horizon_compatibility(pointwise_subtraction(remaining_supply_horizon, P2_used), P3_used, total_battery)[0]:
             total_battery = verify_horizon_compatibility(remaining_supply_horizon, P2_used, total_battery)[1]
-            remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, P2_used)
+            remaining_supply_horizon = pointwise_subtraction(remaining_supply_horizon, P2_used)
             powered_clusters = clear_lower_priorities(3, powered_clusters)
             if remaining_supply_horizon[0] < 0: remaining_supply_horizon[0] = 0
         # if everything can be powered,
         else:
-            total_battery = verify_horizon_compatibility(remaining_supply_horizon, clmath.pointwise_addition(P2_used, P3_used), total_battery)[1]
-            remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, P2_used)
-            remaining_supply_horizon = clmath.pointwise_subtraction(remaining_supply_horizon, P3_used)
+            total_battery = verify_horizon_compatibility(remaining_supply_horizon, pointwise_addition(P2_used, P3_used), total_battery)[1]
+            remaining_supply_horizon = pointwise_subtraction(remaining_supply_horizon, P2_used)
+            remaining_supply_horizon = pointwise_subtraction(remaining_supply_horizon, P3_used)
             if remaining_supply_horizon[0] < 0: remaining_supply_horizon[0] = 0
 
     blackout_status = 0

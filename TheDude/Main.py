@@ -4,8 +4,6 @@
 import ML
 import FSM
 import settings
-import serial
-from serial.tools import list_ports
 import time
 import pandas as pd
 import threading
@@ -59,7 +57,7 @@ if __name__ == "__main__":
 
     # Send list of all clusters in dictionary form[{Cluster: Name, Priority: x, CSV: file}, ...]
     FSM.init(clusters)
-    ML.init()
+    ML.init(100)
     
     time_horizon = time.time() - TIME_HORIZON * 60 + 1
     
@@ -69,7 +67,6 @@ if __name__ == "__main__":
             time_horizon = time.time()
             if BLACKOUT: 
                 BLACKOUT = FSM.fsm() #returns whether blackout is continuing or not
-                runs += 1
                 with open(settings.powerreqscsv, "r", encoding="utf-8", errors="ignore") as data:
                     final_line = data.readlines()[-1]
                     final_line = final_line.split(',')
