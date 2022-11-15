@@ -4,7 +4,6 @@ from pandas import read_csv
 from keras import Sequential
 from keras.layers import Dense
 from keras.layers import LSTM
-import time
 from tensorflow import math
 from tensorflow import reduce_mean
 import tensorflow as tf
@@ -33,25 +32,13 @@ def split_sequence(sequence, n_steps):
     print('X: \n', X[0:5], '\n Y: \n', y[0:5])
     return asarray(X), asarray(y)
 
-
 def custom_loss(y_actual, y_pred):
-    SE_Tensor = math.square(y_pred - y_actual)  # squared difference
-    MSE = reduce_mean(SE_Tensor, axis=0)
-    # RMSE = tf.math.sqrt(MSE)
-
-    Zeros = tf.zeros_like(MSE)  # create tensor of zeros
-    Mask = [False for i in range(20)] + [True]  # create mask
-    return tf.where(Mask, MSE, Zeros)  # create tensor where every loss is 0 except solar output
+    MSE = reduce_mean(math.square(y_pred - y_actual), axis=0)
+    return tf.where([False for i in range(20)] + [True], MSE, tf.zeros_like(MSE))  # create tensor where every loss is 0 except solar output
 
 def custom_eval(y_actual, y_pred):
-    SE_Tensor = math.square(y_pred - y_actual)  # squared difference
-    MSE = reduce_mean(SE_Tensor, axis=0)
-
-    Zeros = tf.zeros_like(MSE)  # create tensor of zeros
-    Mask = [False for i in range(20)] + [True]  # create mask
-    Solar_MSE = tf.where(Mask, MSE, Zeros)  # create tensor where every loss is 0 except solar output
-
-    return tf.math.sqrt(Solar_MSE)
+    MSE = reduce_mean(math.square(y_pred - y_actual), axis=0)
+    return tf.math.sqrt(tf.where([False for i in range(20)] + [True], MSE, tf.zeros_like(MSE)))
 
 
 def generate_model(starting, model_location, csv):
@@ -61,19 +48,11 @@ def generate_model(starting, model_location, csv):
     df = df.iloc[:-PREDICTION_SET_SIZE]
 
     holdout_X, holdout_y = split_sequence(df_holdout.values.astype('float32'), N_STEPS)
-    # retrieve the values
-    # values = df.values.astype('float32')
-    # # specify the window size
-    # n_steps = 5
-    # split into samples
-    # X, y = split_sequence(values, N_STEPS)
     # reshape into [samples, timesteps, features]
     holdout_X = holdout_X.reshape((holdout_X.shape[0], holdout_X.shape[1], 21))
     # split into train/test
     print(holdout_X[:-N_TEST])
     X_train, X_test, y_train, y_test = holdout_X[:-N_TEST], holdout_X[-N_TEST:], holdout_y[:-N_TEST], holdout_y[-N_TEST:]
-    # %%
-    # define model
     # improvement area : try adding dropout
     model = Sequential()
     model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS, 21)))
@@ -82,7 +61,6 @@ def generate_model(starting, model_location, csv):
     model.add(Dense(1))
     # compile the model
     model.compile(optimizer='adam', loss=custom_loss, metrics=[custom_eval])
-    # model.compile(optimizer='adam', loss='mse', metrics=[custom_eval])
     # fit the model
     model.fit(X_train, y_train, epochs=NUM_EPOCHS, batch_size=32, verbose=2, validation_data=(X_test, y_test))
     model.save(model_location)
@@ -97,7 +75,6 @@ def fit_model(model, df, points, model_location, n_tests):
     # split into train/test
     x_train, x_test, y_train, y_test = X[:-n_tests], X[-n_tests:], y[:-n_tests], y[-n_tests:]
     # fit the model
-    time1 = time.time()
     model.compile(optimizer='adam', loss=custom_loss, metrics=[custom_eval])
     little_x = model.fit(x_train, y_train, epochs=NUM_EPOCHS, batch_size=32, verbose=VERBOSE, validation_data=(x_test, y_test))
     little_x.model.save(model_location)

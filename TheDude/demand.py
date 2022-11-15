@@ -66,12 +66,10 @@ def fit_model(model, df, points, model_location, n_tests):
 # that contains the data for amount of power used per time horizon. It assumes that the time
 # between each data point is constant and returns the model.
 def generate_model(df, model_location):
-    # define model
     cluster_predictions[model_location] = [DEMAND_UNINIT, 0] #initialize all models [accuracy, counter]
     if (not os.path.exists(model_location)):
         model = Sequential()
         model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS, 1)))
-        # model.add(BatchNormalization())
         model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
         model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
         model.add(Dense(1))
