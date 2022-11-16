@@ -7,9 +7,9 @@ import settings
 # CONSTANTS
 DEMAND_HORIZON_LENGTH = 5
 CSV_ENTRY_LENGTH = 15
-BATTERY_CAPACITY = 1000
+BATTERY_CAPACITY = 75000
 BATTERY_USE_RATIO_2 = .2
-BATTERY_USE_RATIO_3 = .7
+BATTERY_USE_RATIO_3 = .5
 
 # Time each cluster will be on (highest to lowest) 0 indicates always powered
 TIME = [0,4,2]
@@ -22,7 +22,7 @@ P1 = []
 P2 = []
 P3 = []
 
-total_battery = 0
+total_battery = 75000
 
 run_count = 0
 
@@ -176,6 +176,8 @@ def fsm():
     if verify_horizon_compatibility(remaining_supply_horizon, P1_demand, total_battery)[0]:
         # first calculate how much battery and supply is remaining
         [x,total_battery,remaining_supply_horizon] = verify_horizon_compatibility(remaining_supply_horizon, P1_demand, total_battery)
+        use_battery_2 = total_battery > BATTERY_USE_RATIO_2 * BATTERY_CAPACITY
+        use_battery_3 = total_battery > BATTERY_USE_RATIO_3 * BATTERY_CAPACITY
         for item in P1:
             powered_clusters.append(item)
     else:
@@ -183,6 +185,8 @@ def fsm():
             if verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)[0]:
                 [x,total_battery,remaining_supply_horizon] = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)
                 powered_clusters.append(item)
+                use_battery_2 = total_battery > BATTERY_USE_RATIO_2 * BATTERY_CAPACITY
+                use_battery_3 = total_battery > BATTERY_USE_RATIO_3 * BATTERY_CAPACITY
         # if only a few priority 1 clusters can be powered, then its best to stop
         total_battery += remaining_supply_horizon[0]
         if total_battery > BATTERY_CAPACITY: total_battery = BATTERY_CAPACITY
@@ -227,6 +231,8 @@ def fsm():
                     powered_clusters.append(item)
                     if use_battery_2: [x,total_battery,remaining_supply_horizon] = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)
                     else: [x,total_battery,remaining_supply_horizon] = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon)
+                    use_battery_2 = total_battery > BATTERY_USE_RATIO_2 * BATTERY_CAPACITY
+                    use_battery_3 = total_battery > BATTERY_USE_RATIO_3 * BATTERY_CAPACITY
                     ran_out = False
                     break                    # if all items in the list were checked and none could be picked, then ran_out continues to be true
 
@@ -242,6 +248,8 @@ def fsm():
                         powered_clusters.append(item)
                         if use_battery_3: [x,total_battery,remaining_supply_horizon] = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)
                         else: [x,total_battery,remaining_supply_horizon] = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon)
+                        use_battery_2 = total_battery > BATTERY_USE_RATIO_2 * BATTERY_CAPACITY
+                        use_battery_3 = total_battery > BATTERY_USE_RATIO_3 * BATTERY_CAPACITY
                         ran_out = False
                         break
                 
@@ -250,6 +258,7 @@ def fsm():
     # depower all tier 3 clusters
     # find new tier 3 clusters to power along the time horizon
     elif run_count % TIME[2] == 0:
+        use_battery_2 = total_battery > BATTERY_USE_RATIO_2 * BATTERY_CAPACITY
         use_battery_3 = total_battery > BATTERY_USE_RATIO_3 * BATTERY_CAPACITY
         # this stores the total demand horizon of the P2 clusters
         P2_used = [0] * DEMAND_HORIZON_LENGTH
@@ -281,7 +290,8 @@ def fsm():
         else:
             [x, total_battery, remaining_supply_horizon] = verify_horizon_compatibility(remaining_supply_horizon, P2_used, total_battery)
             powered_clusters += maintain_list
-        
+            use_battery_2 = total_battery > BATTERY_USE_RATIO_2 * BATTERY_CAPACITY
+            use_battery_3 = total_battery > BATTERY_USE_RATIO_3 * BATTERY_CAPACITY
         i = 0
         # if you have enough power for all the P2 clusters, then you can start powering P3 clusters
         if power_P3_clusters:
@@ -303,6 +313,8 @@ def fsm():
                         if use_battery_3: [x,total_battery,remaining_supply_horizon] = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon, total_battery)
                         else: [x,total_battery,remaining_supply_horizon] = verify_horizon_compatibility(remaining_supply_horizon, item.demand_horizon)
                         ran_out = False
+                        use_battery_2 = total_battery > BATTERY_USE_RATIO_2 * BATTERY_CAPACITY
+                        use_battery_3 = total_battery > BATTERY_USE_RATIO_3 * BATTERY_CAPACITY
                         i += 1
                         break
 
@@ -330,9 +342,13 @@ def fsm():
         elif not verify_horizon_compatibility(remaining_supply_horizon, total_maintenance_used, total_battery)[0]:
             [x,total_battery,remaining_supply_horizon] = verify_horizon_compatibility(remaining_supply_horizon, P2_used, total_battery)
             powered_clusters += clear_lower_priorities(3, maintain_list)
+            use_battery_2 = total_battery > BATTERY_USE_RATIO_2 * BATTERY_CAPACITY
+            use_battery_3 = total_battery > BATTERY_USE_RATIO_3 * BATTERY_CAPACITY
         # if everything can be powered,
         else:
             [x,total_battery,remaining_supply_horizon] = verify_horizon_compatibility(remaining_supply_horizon, total_maintenance_used, total_battery)
+            use_battery_2 = total_battery > BATTERY_USE_RATIO_2 * BATTERY_CAPACITY
+            use_battery_3 = total_battery > BATTERY_USE_RATIO_3 * BATTERY_CAPACITY
             powered_clusters += maintain_list
 
     blackout_status = 0

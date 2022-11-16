@@ -14,11 +14,13 @@ import keras
 import matplotlib.pyplot as plt
 import settings
 import time
+import openpyxl
 from multiprocessing import Pool
 
-NUM_DATA_POINTS = 1500 # MAX if using all data, integer if using some data
+NUM_DATA_POINTS = 'MAX' # MAX if using all data, integer if using some data
 NUM_EPOCHS = 100
 N_STEPS = 5
+N_TESTS = 50
 NEW_DATA_AMOUNT = 168
 VERBOSE = 2
 PREDICTION_THRESHOLD = .11 # Percentage
@@ -63,10 +65,8 @@ def fit_model(model, df, points, model_location, n_tests):
     # split into train/test
     x_train, x_test, y_train, y_test = X[:-n_tests], X[-n_tests:], y[:-n_tests], y[-n_tests:]
     # fit the model
-    time1 = time.time()
     model.compile(optimizer='adam', loss='mse', metrics=['mae'], run_eagerly=True)
     little_x = model.fit(x_train, y_train, epochs=NUM_EPOCHS, batch_size=32, verbose=VERBOSE, validation_data=(x_test, y_test))
-    TIME.append(time.time() - time1)
     little_x.model.save(model_location)
     return x_test, y_test, little_x
 
@@ -77,6 +77,7 @@ def generate_model(df, model_location):
     # define model
     cluster_predictions[model_location] = [DEMAND_UNINIT, 0] #initialize all models [accuracy, counter]
     if (not os.path.exists(model_location)):
+
         model = Sequential()
         model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS, 1)))
         # model.add(BatchNormalization())
@@ -86,7 +87,7 @@ def generate_model(df, model_location):
         # compile the model
         model.compile(optimizer='adam', loss='mse', metrics=['mae'])
         # Validate on last week of data for generating entire model
-        x_test, y_test, model = fit_model(model, df, len(df) if (NUM_DATA_POINTS == "MAX") else NUM_DATA_POINTS, model_location, 150)
+        x_test, y_test, model = fit_model(model, df, len(df) if (NUM_DATA_POINTS == "MAX") else NUM_DATA_POINTS, model_location, N_TESTS)
 
 # This function generates a prediction given an input model and dataframe that contains the power consumption
 # values in the value column. It will generate predictions for DEMAND_TIME_HORIZONS and update the model passed

@@ -45,7 +45,6 @@ def train(start):
         myFile.close()
         weather_df = pd.read_csv(text)
         os.remove(text)
-        print("Generated new weather dataframe")
     except:
         weather_df = pd.read_csv(weathercsv)  # use old one if cant read from url
 

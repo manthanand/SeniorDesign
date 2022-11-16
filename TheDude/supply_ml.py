@@ -34,7 +34,7 @@ SUPPLY_UNINIT = 42069
 COUNTER = 0
 PREVIOUS_PREDICTION = 42069
 PREDICTION_SET_SIZE = 580
-N_TEST = 50
+N_TEST = 5
 # Dictionary key is cluster model path, value is list with [prediction accuracy, counter]
 
 # Should be used by layer above to increment amount of time horizons that ML has predicted
@@ -59,7 +59,7 @@ def split_sequence(sequence, n_steps):
         seq_x, seq_y = sequence[i:end_ix], sequence[end_ix]
         X.append(seq_x)
         y.append(seq_y)
-    print('X: \n', X[0:5], '\n Y: \n', y[0:5])
+    # print('X: \n', X[0:5], '\n Y: \n', y[0:5])
     return asarray(X), asarray(y)
 
 
@@ -70,7 +70,7 @@ def custom_loss(y_actual, y_pred):
 
     Zeros = tf.zeros_like(MSE)  # create tensor of zeros
     Mask = [False, False, False, False, False, False, False, False, False, False,
-            False, False, False, False, False, False, False, True]  # create mask
+            False, False, False, False, False, False, True]  # create mask
     Solar_MSE = tf.where(Mask, MSE, Zeros)  # create tensor where every loss is 0 except solar output
 
     # print_output = tf.print(Solar_MSE, "Solar_MSE: ")
@@ -84,7 +84,7 @@ def custom_eval(y_actual, y_pred):
 
     Zeros = tf.zeros_like(MSE)  # create tensor of zeros
     Mask = [False, False, False, False, False, False, False, False, False, False,
-            False, False, False, False, False, False, False, True]  # create mask
+            False, False, False, False, False, False, True]  # create mask
     Solar_MSE = tf.where(Mask, MSE, Zeros)  # create tensor where every loss is 0 except solar output
 
     Solar_RMSE = tf.math.sqrt(Solar_MSE)
@@ -143,13 +143,13 @@ def generate_model(starting, model_location, csv):
     # define model
     # improvement area : try adding dropout
     model = Sequential()
-    model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS, 18)))
+    model.add(LSTM(100, activation='relu', kernel_initializer='he_normal', input_shape=(N_STEPS, 17)))
     model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
     model.add(Dense(50, activation='relu', kernel_initializer='he_normal'))
     model.add(Dense(1))
     # compile the model
-    # model.compile(optimizer='adam', loss=custom_loss, metrics=[custom_eval])
-    model.compile(optimizer='adam', loss='mse')
+    model.compile(optimizer='adam', loss=custom_loss, metrics=[custom_eval])
+    # model.compile(optimizer='adam', loss='mse') # trev commented this out on demo day
     # fit the model
     model.fit(X_train, y_train, epochs=NUM_EPOCHS, batch_size=32, verbose=2, validation_data=(X_test, y_test), callbacks=tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3))
     model.save(model_location)
@@ -160,7 +160,7 @@ def fit_model(model, df, points, model_location, n_tests):
     # split into samples
     X, y = split_sequence(values)
     # reshape into [samples, timesteps, features]
-    X = X.reshape((X.shape[0], X.shape[1], 1))
+    X = X.reshape((X.shape[0], X.shape[1], 17))
     # split into train/test
     x_train, x_test, y_train, y_test = X[:-n_tests], X[-n_tests:], y[:-n_tests], y[-n_tests:]
     # fit the model
@@ -207,7 +207,11 @@ def compute_prediction(model_location, df):
         #     fit_model(predict_model, df, current_amount, model_location, 5)
         # final_array = ([current] + [th[i][0][0] for i in range(settings.SUPPLY_TIME_HORIZONS)])
         LUT = pd.read_csv(settings.lookuptable)['P Output [MW]']
-        x = [LUT[abs(current*1000).round()]*1000, LUT[abs(prediction[0][0]*1000).round()]*1000]
+        if current <= 0:
+            return [0, 0]
+        elif (prediction <= 0):
+            return [LUT[abs(current*1000).round()]*1000, 0]
+        x = [LUT[abs(current*1000).round()]*1000, LUT[abs(prediction[0][0]*1000).round()]*4]
         return x
 
 '''    currentWeather = df.iloc[-2]
