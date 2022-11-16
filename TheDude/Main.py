@@ -50,9 +50,7 @@ def time_test():
                     else:
                         on += 1
             print("\n\nON: ", on, "\nOFF: ", off)
-        else:
-            FSM.reset()
-    x = 0
+        else: FSM.reset()
 
 def wait_input():
     global BLACKOUT

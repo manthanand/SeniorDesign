@@ -28,15 +28,15 @@ def train(start):
                                   ["Horizon 1 supply"])
     output.loc[len(output.index)] = (
                 ["Supply", "", "",] + 
-                [""] + # This is because there is only one supply prediction
-                supply_ml.compute_prediction(settings.smodelfp, read_csv(os.path.join(settings.smodelfp, settings.supplyfp)).head(start))
+                ["" for i in range(settings.DEMAND_TIME_HORIZONS)] +
+                supply_ml.compute_prediction(settings.smodelfp, read_csv(os.path.join(settings.smodelfp, settings.supplyfp), index_col=0, header=0).head(start))
     )
     # Write Demand data to dataframe
     for i, r in clusters.iterrows():
         data = read_csv((glob.glob(settings.demandfp + r["Cluster"] + "*")[0]), header=0, index_col=0)
         data = data.head(start)
         predictions = demand.compute_prediction(os.path.join(settings.dmodelfp, r["Cluster"]), data)
-        output.loc[len(output.index)] = ([r["Cluster"]] + [r["Priority"]] + predictions + [""] + ["" for i in range(settings.SUPPLY_TIME_HORIZONS)])
+        output.loc[len(output.index)] = ([r["Cluster"]] + [r["Priority"]] + predictions + [""] + [""])
     output.to_csv(settings.outputfp, encoding='utf-8', index=False)  # Write Dataframe to csv
 
 # train()

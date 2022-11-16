@@ -115,7 +115,7 @@ def compute_prediction(model_location, df):
     predict_model = keras.models.load_model(model_location, custom_objects={"custom_eval": custom_eval, "custom_loss": custom_loss})
     operate_current, y = split_sequence(df[-N_STEPS - 1:].values.astype('float32'), N_STEPS)
     prediction = predict_model.predict(operate_current, verbose=VERBOSE)
-    LUT = pd.read_csv(settings.lookuptable)['P Output [MW]']
+    LUT = read_csv(settings.lookuptable)['P Output [MW]']
     if current <= 0:
         return [0, 0]
     elif (prediction <= 0):
