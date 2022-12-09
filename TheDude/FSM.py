@@ -1,3 +1,9 @@
+# TODO: If this program could be done again, these are the changes I would make knowing what I know now:
+# This problem appears to have a simple optimal recurrence in it, though complicated by the presence of different "weights" i.e. priority and total time powered
+# Since this algorithm runs on the order of hours, there is probably a multidimensional dynamic solution here that includes "regularization" functions based on priority and weight.
+# Perhaps the recurrence could attempt to pack a maximum amount of buildings with a minimum cost (determined by priority and time spent on) in pseudo-polynomial time? Because otherwise it feels like knapsack
+# Until this decision is made in the future, this heuristic algorithm does the job (albeit in a very rigid way)
+
 from __future__ import print_function
 import pandas as pd
 import settings
